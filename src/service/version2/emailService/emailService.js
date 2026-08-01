@@ -1,13 +1,12 @@
 import dotenv from "dotenv";
-import axios from "axios";
+import { Resend } from "resend";
 
 dotenv.config();
 
-class ZeptoMailEmailService {
+class ResendEmailService {
   constructor() {
     this.initialized = false;
-    this.apiKey = null;
-    this.mailAgentAlias = null;
+    this.client = null;
     this.fromEmail = null;
     this.fromName = null;
   }
@@ -15,39 +14,24 @@ class ZeptoMailEmailService {
   initialize() {
     if (this.initialized) return;
 
-    const {
-      ZEPTOMAIL_API_KEY,
-      ZEPTOMAIL_MAIL_AGENT_ALIAS,
-      MAIL_FROM_EMAIL,
-      MAIL_FROM_NAME,
-    } = process.env;
+    const { RESEND_API_KEY, MAIL_FROM_EMAIL, MAIL_FROM_NAME } = process.env;
 
-    if (!ZEPTOMAIL_API_KEY) {
-      throw new Error("Missing ZEPTOMAIL_API_KEY");
-    }
-
-    if (!ZEPTOMAIL_MAIL_AGENT_ALIAS) {
-      throw new Error("Missing ZEPTOMAIL_MAIL_AGENT_ALIAS");
+    if (!RESEND_API_KEY) {
+      throw new Error("Missing RESEND_API_KEY");
     }
 
     if (!MAIL_FROM_EMAIL) {
       throw new Error("Missing MAIL_FROM_EMAIL");
     }
 
-    // Ensure the API key has the correct format
-    this.apiKey = ZEPTOMAIL_API_KEY.startsWith("Zoho-enczapikey ")
-      ? ZEPTOMAIL_API_KEY
-      : `Zoho-enczapikey ${ZEPTOMAIL_API_KEY}`;
-
-    this.mailAgentAlias = ZEPTOMAIL_MAIL_AGENT_ALIAS;
+    this.client = new Resend(RESEND_API_KEY);
     this.fromEmail = MAIL_FROM_EMAIL;
-    this.fromName = MAIL_FROM_NAME || "Depay App";
+    this.fromName = MAIL_FROM_NAME || "Depay";
 
     this.initialized = true;
-    console.log("✅ ZeptoMail Email Service initialized");
+
+    console.log("✅ Resend Email Service initialized");
     console.log("📧 From:", this.fromEmail);
-    console.log("🔑 API Key present:", !!this.apiKey);
-    console.log("📋 Mail Agent Alias:", this.mailAgentAlias);
   }
 
   async sendMail({ to, subject, text, html, maxRetries = 3 }) {
@@ -58,63 +42,46 @@ class ZeptoMailEmailService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(
-          `📤 Sending email to ${to} via ZeptoMail (attempt ${attempt}/${maxRetries})`
+          `📤 Sending email to ${to} via Resend (Attempt ${attempt}/${maxRetries})`
         );
 
-        const response = await axios({
-          method: "post",
-          url: `https://api.zeptomail.com/v1.1/email`,
-          headers: {
-            accept: "application/json",
-            Authorization: this.apiKey,
-            "Content-Type": "application/json",
-          },
-          data: {
-            from: {
-              address: this.fromEmail,
-              name: this.fromName,
-            },
-            to: [
-              {
-                email_address: {
-                  address: to,
-                  name: to.split("@")[0],
-                },
-              },
-            ],
-            subject: subject,
-            htmlbody: html || `<p>${text || ""}</p>`,
-            textbody: text || "",
-          },
-          timeout: 10000,
+        const response = await this.client.emails.send({
+          from: `${this.fromName} <${this.fromEmail}>`,
+          to,
+          subject,
+          html: html || `<p>${text || ""}</p>`,
+          text: text || "",
         });
 
-        console.log("✅ Email sent successfully via ZeptoMail");
+        console.log("✅ Email sent successfully via Resend");
+
         return {
           success: true,
-          response: response.data,
+          response,
         };
       } catch (error) {
         console.error(
           `❌ Attempt ${attempt}/${maxRetries} failed:`,
-          error.response?.data || error.message
+          error.message
         );
 
         if (attempt === maxRetries) {
           throw new Error("Email delivery failed");
         }
 
-        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1500 * attempt)
+        );
       }
     }
   }
 }
 
-// Singleton instance
-const emailService = new ZeptoMailEmailService();
+const emailService = new ResendEmailService();
 
-// Public exports (same usage as before)
 export const sendMail = (options) => emailService.sendMail(options);
-export const initializeEmailService = () => emailService.initialize();
+
+export const initializeEmailService = () =>
+  emailService.initialize();
 
 export default sendMail;
