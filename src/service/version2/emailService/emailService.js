@@ -30,7 +30,7 @@ class ResendEmailService {
 
     this.initialized = true;
 
-    console.log("✅ Resend Email Service initialized");
+    console.log("Resend Email Service initialized");
     console.log("📧 From:", this.fromEmail);
   }
 
