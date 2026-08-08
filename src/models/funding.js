@@ -23,6 +23,8 @@ const fundingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    fee: { type: Number, default: 0, min: 0 },
+    reference: { type: String, default: null, unique: true, sparse: true },
   },
   {
     timestamps: true,

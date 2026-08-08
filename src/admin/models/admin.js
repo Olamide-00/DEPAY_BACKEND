@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 const adminSchema = new mongoose.Schema(
   {
+    name: { type: String, trim: true, default: "" },
     email: {
       type: String,
       required: true,
@@ -12,6 +13,17 @@ const adminSchema = new mongoose.Schema(
     },
     password: { type: String, required: true },
     role: { type: String, default: "admin" },
+    notificationPrefs: {
+      txAlerts: { type: Boolean, default: true },
+      failedAlerts: { type: Boolean, default: true },
+      largeFunding: { type: Boolean, default: true },
+      newSignups: { type: Boolean, default: true },
+      weeklyDigest: { type: Boolean, default: false },
+    },
+    apiKeyHash: { type: String, default: null, select: false },
+    apiKeyLastFour: { type: String, default: null },
+    resetPasswordTokenHash: { type: String, default: null, select: false },
+    resetPasswordExpires: { type: Date, default: null, select: false },
   },
   { timestamps: true },
 );

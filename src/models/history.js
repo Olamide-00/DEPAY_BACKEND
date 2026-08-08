@@ -16,9 +16,12 @@ const historySchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ["PENDING", "SUCCESS", "FAILED"],
+    enum: ["PENDING", "SUCCESS", "FAILED", "REVERSED"],
     default: "PENDING",
   },
+  fee: { type: Number, default: 0, min: 0 },
+  reversedAt: { type: Date, default: null },
+  reversedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
   token: { type: String, default: null },
   units: { type: String, default: null },
   serialNumber: { type: String },
