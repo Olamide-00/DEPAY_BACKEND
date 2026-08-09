@@ -11,15 +11,23 @@ import billsController from "./routes/bills.js";
 import verificationRouter from "./routes/verification.js";
 import PINRouter from "./routes/PIN.js";
 import AdminRouter from "./admin/routes/admin.js";
-import userManagementRouter from "./admin/routes/userManagement.js";
 import jTokensRouter from "./routes/jTokens.js";
 import voucherRouter from "./routes/voucher.js";
 import webhookRouter from "./routes/webhook.js";
-import AdminAuthRouter from "./admin/routes/auth.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { errorHandler } from "./middleware/version2/errorHandler.js";
 import { requestLogger } from "./middleware/version2/requestLogger.js";
 import { globalLimiter, authLimiter } from "./utils/version2/rateLimiter.js";
+
+//admin routes
+import AdminAuthRouter from "./admin/routes/auth.js";
+import AdminFunding from "./admin/routes/fundings.js";
+import AdminServices from "./admin/routes/services.js";
+import AdminSettings from "./admin/routes/settings.js";
+import AdminTransactions from "./admin/routes/transactions.js";
+import userManagementRouter from "./admin/routes/userManagement.js";
+import { verifyAdminToken } from "./admin/middleware/verifyAdminToken.js";
+
 
 dotenv.config();
 
@@ -131,10 +139,17 @@ app.use("/api/v1", verificationRouter);
 app.use("/api/v1/PIN", PINRouter);
 app.use("/api/v1/jtokens", jTokensRouter);
 app.use("/api/v1/voucher", voucherRouter);
+
+
+
 // ── Admin routes ──────────────────────────────────────
-app.use("/api/admin/auth", AdminAuthRouter);
-app.use("/api/admin/users", userManagementRouter);
-app.use("/api/admin", AdminRouter);
+app.use("/api/v1/admin/auth",verifyAdminToken, AdminAuthRouter);
+app.use("/api/v1/admin/users", verifyAdminToken, userManagementRouter);
+app.use("/api/v1/admin", verifyAdminToken, AdminRouter);
+app.use("/api/v1/admin/fundings", verifyAdminToken, AdminFunding);
+app.use("/api/v1/admin/services", verifyAdminToken, AdminServices);
+app.use("/api/v1/admin/settings", verifyAdminToken, AdminSettings);
+app.use("/api/v1/admin/transactions", verifyAdminToken, AdminTransactions);
 
 // ── 404 ───────────────────────────────────────────────
 app.use("*", (req, res) => {
