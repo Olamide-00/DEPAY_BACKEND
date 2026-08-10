@@ -10,120 +10,183 @@ import accountRouter from "./routes/wallet.js";
 import billsController from "./routes/bills.js";
 import verificationRouter from "./routes/verification.js";
 import PINRouter from "./routes/PIN.js";
-import AdminRouter from "./admin/routes/admin.js";
 import jTokensRouter from "./routes/jTokens.js";
 import voucherRouter from "./routes/voucher.js";
 import webhookRouter from "./routes/webhook.js";
-import { verifyToken } from "./middleware/verifyToken.js";
-import { errorHandler } from "./middleware/version2/errorHandler.js";
-import { requestLogger } from "./middleware/version2/requestLogger.js";
-import { globalLimiter, authLimiter } from "./utils/version2/rateLimiter.js";
 
-//admin routes
+import AdminRouter from "./admin/routes/admin.js";
 import AdminAuthRouter from "./admin/routes/auth.js";
 import AdminFunding from "./admin/routes/fundings.js";
 import AdminServices from "./admin/routes/services.js";
 import AdminSettings from "./admin/routes/settings.js";
 import AdminTransactions from "./admin/routes/transactions.js";
 import userManagementRouter from "./admin/routes/userManagement.js";
+
+import { verifyToken } from "./middleware/verifyToken.js";
 import { verifyAdminToken } from "./admin/middleware/verifyAdminToken.js";
 
+import { errorHandler } from "./middleware/version2/errorHandler.js";
+import { requestLogger } from "./middleware/version2/requestLogger.js";
+
+import { globalLimiter, authLimiter } from "./utils/version2/rateLimiter.js";
 
 dotenv.config();
 
 const app = express();
+
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+*/
 
 const allowedOrigins = [
   "https://api.depay.com.ng",
-  "http://localhost:3000",
   "https://depay.com.ng",
   "https://admin.depay.com.ng",
+  "http://localhost:3000",
 ];
-
-// ── CORS manual header ────────────────────────────────
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
-  }
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,DELETE,PATCH,OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type,Authorization,X-Requested-With"
-  );
-  res.setHeader("Access-Control-Max-Age", "86400");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
-
-// ── Security ──────────────────────────────────────────
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: false,
-    contentSecurityPolicy: false,
-  })
-);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS blocked: ${origin}`));
+    // Allow requests without an Origin header
+    // e.g. Postman, server-to-server requests, mobile apps
+    if (!origin) {
+      return callback(null, true);
     }
+
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS allowed: ${origin}`);
+      return callback(null, true);
+    }
+
+    console.log(`❌ CORS blocked: ${origin}`);
+
+    return callback(new Error(`CORS blocked: ${origin}`));
   },
+
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+
   credentials: false,
+
   maxAge: 86400,
 };
 
-app.options("*", cors(corsOptions));
 app.use(cors(corsOptions));
 
-// ── Compression ───────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Security
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+
+    crossOriginOpenerPolicy: false,
+
+    contentSecurityPolicy: false,
+  }),
+);
+
+/*
+|--------------------------------------------------------------------------
+| Compression
+|--------------------------------------------------------------------------
+*/
+
 app.use(compression());
 
-// ── Rate limiting ─────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Trust Proxy
+|--------------------------------------------------------------------------
+*/
+
 app.set("trust proxy", true);
+
+/*
+|--------------------------------------------------------------------------
+| Rate Limiting
+|--------------------------------------------------------------------------
+*/
+
 app.use(globalLimiter);
 
-// ── Parsing ───────────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Body Parsing
+|--------------------------------------------------------------------------
+*/
+
 app.use(
   express.json({
     limit: "10mb",
+
     verify: (req, res, buf) => {
       req.rawBody = buf;
     },
-  })
+  }),
 );
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ── Logging ───────────────────────────────────────────
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb",
+  }),
+);
+
+/*
+|--------------------------------------------------------------------------
+| Request Logging
+|--------------------------------------------------------------------------
+*/
+
 app.use(requestLogger);
 
-// ── DB connection (cached for serverless) ─────────────
+/*
+|--------------------------------------------------------------------------
+| Database Connection
+|--------------------------------------------------------------------------
+*/
+
 let isConnected = false;
+
 const ensureDb = async (req, res, next) => {
   if (!isConnected) {
     try {
       await connectToDb();
+
       isConnected = true;
-    } catch (err) {
-      console.error("DB connection failed:", err);
-      return res.status(500).json({ error: "Database connection failed" });
+
+      console.log("✅ Database connected");
+    } catch (error) {
+      console.error("❌ Database connection failed:", error);
+
+      return res.status(500).json({
+        error: "Database connection failed",
+      });
     }
   }
+
   next();
 };
+
 app.use(ensureDb);
 
-// ── Health check ──────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Health Check
+|--------------------------------------------------------------------------
+*/
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -133,30 +196,75 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ── Public routes ─────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
+
+// User authentication
 app.use("/api/v1/user", authLimiter, userRouter);
+
+// Webhooks
 app.use("/api/v1", webhookRouter);
 
-// ── Protected routes ──────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Protected User Routes
+|--------------------------------------------------------------------------
+*/
+
+// Wallet
 app.use("/api/v1/wallet", verifyToken, accountRouter);
+
+// Bills
 app.use("/api/v1/bills", billsController);
+
+// Verification
 app.use("/api/v1", verificationRouter);
+
+// PIN
 app.use("/api/v1/PIN", PINRouter);
+
+// J-Tokens
 app.use("/api/v1/jtokens", jTokensRouter);
+
+// Voucher
 app.use("/api/v1/voucher", voucherRouter);
 
+/*
+|--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
+*/
 
-
-// ── Admin routes ──────────────────────────────────────
+// Admin authentication
 app.use("/api/v1/admin/auth", AdminAuthRouter);
+
+// Admin users
 app.use("/api/v1/admin/users", verifyAdminToken, userManagementRouter);
+
+// General admin routes
 app.use("/api/v1/admin", verifyAdminToken, AdminRouter);
+
+// Admin funding
 app.use("/api/v1/admin/fundings", verifyAdminToken, AdminFunding);
+
+// Admin services
 app.use("/api/v1/admin/services", verifyAdminToken, AdminServices);
+
+// Admin settings
 app.use("/api/v1/admin/settings", verifyAdminToken, AdminSettings);
+
+// Admin transactions
 app.use("/api/v1/admin/transactions", verifyAdminToken, AdminTransactions);
 
-// ── 404 ───────────────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| 404 Handler
+|--------------------------------------------------------------------------
+*/
+
 app.use("*", (req, res) => {
   res.status(404).json({
     error: "Route not found",
@@ -165,16 +273,32 @@ app.use("*", (req, res) => {
   });
 });
 
-// ── Error handler ─────────────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Global Error Handler
+|--------------------------------------------------------------------------
+*/
+
 app.use(errorHandler);
 
-// ── Start server (always) ────────────────────────────
+/*
+|--------------------------------------------------------------------------
+| Start Server
+|--------------------------------------------------------------------------
+*/
+
 const PORT = process.env.PORT || 8080;
+
 const { createServer } = await import("http");
+
 const server = createServer(app);
-await connectToDb(); // ensure DB is ready before listening
+
+// Connect to database before starting server
+await connectToDb();
+
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${NODE_ENV}`);
 });
 
 export default app;
