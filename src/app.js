@@ -34,7 +34,12 @@ dotenv.config();
 const app = express();
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-const allowedOrigins = ["https://api.depay.com.ng", "http://localhost:3000", "https://depay.com.ng", "https://admin.depay.com.ng"];
+const allowedOrigins = [
+  "https://api.depay.com.ng",
+  "http://localhost:3000",
+  "https://depay.com.ng",
+  "https://admin.depay.com.ng",
+];
 
 // ── CORS manual header ────────────────────────────────
 app.use((req, res, next) => {
