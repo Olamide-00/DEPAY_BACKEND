@@ -34,7 +34,7 @@ dotenv.config();
 const app = express();
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-const allowedOrigins = ["http://localhost:8080", ,];
+const allowedOrigins = ["https://api.depay.com.ng", "http://localhost:3000", "https://depay.com.ng", "https://admin.depay.com.ng"];
 
 // ── CORS manual header ────────────────────────────────
 app.use((req, res, next) => {
@@ -143,7 +143,7 @@ app.use("/api/v1/voucher", voucherRouter);
 
 
 // ── Admin routes ──────────────────────────────────────
-app.use("/api/v1/admin/auth",verifyAdminToken, AdminAuthRouter);
+app.use("/api/v1/admin/auth", AdminAuthRouter);
 app.use("/api/v1/admin/users", verifyAdminToken, userManagementRouter);
 app.use("/api/v1/admin", verifyAdminToken, AdminRouter);
 app.use("/api/v1/admin/fundings", verifyAdminToken, AdminFunding);
