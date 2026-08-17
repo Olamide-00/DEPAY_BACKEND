@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    /* Output */
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "declaration": false,
+
+    /* NodeNext + "type": "module" requires import specifiers to use the
+       .js extension even though the source files are .ts — this matches
+       every import already written throughout this codebase
+       (e.g. `from "../../models/users.js"`), so nothing needed to
+       change there. TypeScript resolves `./users.js` to `./users.ts`
+       at compile time and leaves it as `./users.js` in the compiled
+       output, which is what Node actually loads. */
+
+    /* Type-checking strictness */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Interop */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+
+    /* Allow .js files to sit alongside .ts during the migration (there
+       are a couple of intentionally-JS files remaining — see
+       TYPESCRIPT_MIGRATION.md) */
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.js"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,6 @@
+export const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  INITIAL_DELAY: 1000,
+  MAX_DELAY: 10000,
+  BACKOFF_MULTIPLIER: 2,
+} as const;
