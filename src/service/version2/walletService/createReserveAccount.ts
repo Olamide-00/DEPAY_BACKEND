@@ -48,13 +48,6 @@ export const createReservedAccount = async (
         },
       );
 
-      // Log the response structure for debugging (remove in production)
-      console.log("Raw Paystack Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-      });
-
       return response.data;
     } catch (error) {
       const axiosError = error as {

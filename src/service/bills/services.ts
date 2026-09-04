@@ -69,28 +69,6 @@ export const getPackage = async (serviceID: string): Promise<unknown> => {
   }
 };
 
-// ══════════════════════════════════════════════════════════════════
-// pay bill service
-//
-// Flow, and how it differs from before:
-//   1. Debit the wallet FIRST via the ledger (atomic — can never run
-//      the balance negative even under concurrent requests for the
-//      same user, and throws InsufficientBalanceError cleanly if the
-//      wallet can't cover it).
-//   2. Call VTPass.
-//   3. On "delivered": write a SUCCESS History row linked to the
-//      ledger entry, award JTokens, record fee revenue.
-//   4. On anything else (not delivered, or VTPass request itself
-//      throws/times out): refund the wallet via a ledger credit AND
-//      always write a FAILED History row — previously a thrown
-//      network error refunded silently with *no* History record at
-//      all, which meant failed attempts left no audit trail.
-//
-// IMPORTANT: this function is NOT safe to blindly retry (it calls a
-// real, non-idempotent third-party payment API). The caller
-// (payBillController) no longer wraps this in the generic retry
-// helper — see the comment there for why that was a bug.
-// ══════════════════════════════════════════════════════════════════
 
 interface RefundAndRecordFailureParams {
   user: Pick<UserDocument, "_id" | "balance">;

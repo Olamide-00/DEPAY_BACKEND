@@ -66,11 +66,7 @@ process.on("uncaughtException", (error) => {
   console.error("🔥 Uncaught Exception:", error);
 });
 
-/*
-|--------------------------------------------------------------------------
-| CORS
-|--------------------------------------------------------------------------
-*/
+//Core setup
 
 const allowedOrigins = [
   "https://api.depay.com.ng",
@@ -108,11 +104,7 @@ const corsOptions: CorsOptions = {
 
 app.use(cors(corsOptions));
 
-/*
-|--------------------------------------------------------------------------
-| Security
-|--------------------------------------------------------------------------
-*/
+//security headers
 
 app.use(
   helmet({
@@ -126,35 +118,18 @@ app.use(
   }),
 );
 
-/*
-|--------------------------------------------------------------------------
-| Compression
-|--------------------------------------------------------------------------
-*/
-
+//compression
 app.use(compression());
 
-/*
-|--------------------------------------------------------------------------
-| Trust Proxy
-|--------------------------------------------------------------------------
-*/
+//proxy
 
 app.set("trust proxy", true);
 
-/*
-|--------------------------------------------------------------------------
-| Rate Limiting
-|--------------------------------------------------------------------------
-*/
+//rate limiting
 
 app.use(globalLimiter);
 
-/*
-|--------------------------------------------------------------------------
-| Body Parsing
-|--------------------------------------------------------------------------
-*/
+//body parsing
 
 app.use(
   express.json({
@@ -173,31 +148,11 @@ app.use(
   }),
 );
 
-/*
-|--------------------------------------------------------------------------
-| Request Logging
-|--------------------------------------------------------------------------
-*/
+//request logging
 
 app.use(requestLogger);
 
-/*
-|--------------------------------------------------------------------------
-| Database Connection
-|--------------------------------------------------------------------------
-| Render runs this as a persistent, always-on process (not a serverless
-| function), so the connection is established once at boot — see
-| `await connectToDb()` further down, right before `server.listen()`.
-| There's no per-request "connect if not already connected" middleware
-| needed here; that pattern exists to handle serverless cold starts and
-| isn't relevant on Render.
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Health Check
-|--------------------------------------------------------------------------
-*/
+//public health check
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -207,11 +162,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
+//unprotected routes
 
 // User authentication
 app.use("/api/v1/user", authLimiter, userRouter);
@@ -223,25 +174,14 @@ app.use("/api/v1", webhookRouter);
 // routes/internal.js; the worker below already runs continuously).
 app.use("/api/v1/internal", internalRouter);
 
-/*
-|--------------------------------------------------------------------------
-| Protected User Routes
-|--------------------------------------------------------------------------
-*/
+//protected routes
 
 // Wallet
 app.use("/api/v1/wallet", verifyToken, accountRouter);
 
 // Bills
 //
-// SECURITY FIX: this router was previously mounted with no auth
-// middleware at all — pay-bill, get-bills-history, etc. trusted
-// whatever `email` the client put in the request body/URL. Anyone
-// who knew (or guessed) a user's email could pay bills out of that
-// user's wallet or read their transaction history. verifyToken is
-// now required, and the controllers use req.user.email as the
-// source of truth instead of the client-supplied one (see
-// serviceController.js).
+
 app.use("/api/v1/bills", verifyToken, billsController);
 
 // Verification
@@ -251,23 +191,14 @@ app.use("/api/v1", verificationRouter);
 app.use("/api/v1/PIN", PINRouter);
 
 // J-Tokens
-//
-// SECURITY FIX: same issue as bills above — convert-jtokens trusted
-// a client-supplied email with no auth check, letting anyone convert
-// JTokens (and the naira they're worth) out of any account.
+
 app.use("/api/v1/jtokens", verifyToken, jTokensRouter);
 
 // Voucher
-//
-// SECURITY FIX: same issue — voucher creation/redemption trusted a
-// client-supplied email with no auth check.
+
 app.use("/api/v1/voucher", verifyToken, voucherRouter);
 
-/*
-|--------------------------------------------------------------------------
-| Admin Routes
-|--------------------------------------------------------------------------
-*/
+//admin endpoints routes
 
 // Admin authentication
 app.use("/api/v1/admin/auth", AdminAuthRouter);

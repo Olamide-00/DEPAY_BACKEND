@@ -8,34 +8,6 @@ import LedgerEntry, {
   type LedgerRelatedModel,
 } from "../../models/ledgerEntry.js";
 
-// ══════════════════════════════════════════════════════════════════
-// Ledger service
-//
-// This is the ONLY place in the codebase allowed to change
-// User.balance. Every other file that used to do
-// `User.findOneAndUpdate(..., { $inc: { balance: amount } })`
-// directly has been refactored to call creditWallet/debitWallet here
-// instead — that's what makes the ledger trustworthy: if a balance
-// can only ever move through this file, then the ledger is
-// guaranteed to be a complete, gapless record of every naira that
-// ever entered or left a wallet.
-//
-// Every write:
-//   1. Runs inside a MongoDB multi-document transaction (session),
-//      so the User.balance update and the LedgerEntry row either
-//      both land or neither does — no more "Funding record exists
-//      but balance was never credited" style drift.
-//   2. Is idempotent via a caller-supplied `reference`. Re-submitting
-//      the exact same reference (retry after timeout, duplicate
-//      webhook delivery, a double-tapped button) returns the
-//      original result instead of applying the change twice — this
-//      is enforced by a unique index, not by application logic, so
-//      it holds even under concurrent duplicate requests.
-//   3. Uses a conditional balance filter for debits
-//      (`balance: { $gte: amount }`), so two concurrent debits can
-//      never both succeed and push a balance negative, even for the
-//      same user hammering the endpoint from two devices at once.
-// ══════════════════════════════════════════════════════════════════
 
 export class InsufficientBalanceError extends Error {
   code = "INSUFFICIENT_BALANCE";
@@ -66,13 +38,7 @@ const isDuplicateKeyError = (err: unknown): boolean => {
   return code === 11000 || code === 11001;
 };
 
-/**
- * Runs `fn(session)` inside a fresh MongoDB transaction and always
- * ends the session afterwards. `session.withTransaction` retries
- * automatically on transient transaction errors (e.g. write
- * conflicts under load), which is exactly what you want at
- * thousand-user scale.
- */
+
 async function runInTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
   const session = await mongoose.startSession();
   try {
@@ -105,21 +71,12 @@ interface WalletMutationParams {
   metadata?: Record<string, unknown>;
 }
 
-/**
- * Fetch an existing ledger entry by reference — used both for the
- * idempotent "already processed" response path and for callers who
- * just want to look up a past entry.
- */
+
 export async function findByReference(reference: string) {
   return LedgerEntry.findOne({ reference }).lean();
 }
 
-/**
- * Look up the ledger entry that was written alongside a given
- * History/Funding/Voucher document — lets callers that only have the
- * related document (e.g. an admin looking at a History row) find its
- * ledger entry without needing to know the ledger reference string.
- */
+
 export async function findEntryByRelated(
   relatedModel: LedgerRelatedModel,
   relatedId: mongoose.Types.ObjectId | string,
@@ -233,10 +190,7 @@ async function writeEntry(
   }
 }
 
-/**
- * Credit a user's wallet. Safe to call concurrently and safe to
- * retry with the same `reference`.
- */
+
 export async function creditWallet(params: WalletMutationParams): Promise<LedgerWriteResult> {
   return writeEntry("CREDIT", params);
 }
