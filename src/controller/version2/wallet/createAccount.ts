@@ -4,7 +4,9 @@ import axios from "axios";
 import type { Request, Response } from "express";
 
 // Input validation schema
-const validateCreateAccountRequest = (accountData: Record<string, unknown>): string[] => {
+const validateCreateAccountRequest = (
+  accountData: Record<string, unknown>,
+): string[] => {
   const errors = [];
 
   if (!accountData.phone) {
@@ -24,7 +26,9 @@ const validateCreateAccountRequest = (accountData: Record<string, unknown>): str
 };
 
 // Function to fetch dedicated account by customer email
-const fetchDedicatedAccountByEmail = async (email: string): Promise<any | null> => {
+const fetchDedicatedAccountByEmail = async (
+  email: string,
+): Promise<any | null> => {
   try {
     const URL = process.env.URL;
     const SECRET_KEY = process.env.SECRET_KEY;
@@ -58,7 +62,6 @@ const fetchDedicatedAccountByEmail = async (email: string): Promise<any | null> 
     console.log("Found customer:", customer.id, customer.customer_code);
 
     // Now fetch dedicated accounts for this customer
-    // Note: Paystack might have a different endpoint for this
     const dedicatedAccountResponse = await axios.get(
       `${URL}/dedicated_account`,
       {
@@ -83,7 +86,8 @@ const fetchDedicatedAccountByEmail = async (email: string): Promise<any | null> 
     if (accounts.length > 0) {
       // Sort by created_at descending to get the latest
       const sortedAccounts = accounts.sort(
-        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
 
       return sortedAccounts[0];
@@ -92,7 +96,7 @@ const fetchDedicatedAccountByEmail = async (email: string): Promise<any | null> 
     return null;
   } catch (error) {
     console.error("Error fetching dedicated account:", {
-      message: (error instanceof Error ? error.message : String(error)),
+      message: error instanceof Error ? error.message : String(error),
       response: (error as any)?.response?.data,
     });
     return null;
@@ -130,7 +134,10 @@ const fetchDedicatedAccountWithRetry = async (
   return null;
 };
 
-export const createReservedAccountController = async (req: Request, res: Response): Promise<Response> => {
+export const createReservedAccountController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const startTime = Date.now();
 
   try {
@@ -214,7 +221,7 @@ export const createReservedAccountController = async (req: Request, res: Respons
     }
     // Handle "in progress" response by trying to fetch the account
     else if (response.message?.includes("in progress")) {
-      // Try to fetch the dedicated account (it might be ready immediately but API response is delayed)
+      // Try to fetch the dedicated account
       const dedicatedAccount = await fetchDedicatedAccountWithRetry(
         accountData.email,
         8,
@@ -289,7 +296,10 @@ export const createReservedAccountController = async (req: Request, res: Respons
 
     console.error("Failed to create reserved account:", {
       error: error instanceof Error ? error.message : String(error),
-      stack: process.env.NODE_ENV === "development" ? (error as Error)?.stack : undefined,
+      stack:
+        process.env.NODE_ENV === "development"
+          ? (error as Error)?.stack
+          : undefined,
       email: req.body?.email,
       phone: req.body?.phone,
       timestamp: new Date().toISOString(),
@@ -318,7 +328,9 @@ export const createReservedAccountController = async (req: Request, res: Respons
       message: "Failed to create reserved account",
       error:
         process.env.NODE_ENV === "development"
-          ? (error instanceof Error ? error.message : String(error))
+          ? error instanceof Error
+            ? error.message
+            : String(error)
           : "An error occurred",
       meta: { duration: `${duration}ms` },
     });
@@ -326,7 +338,10 @@ export const createReservedAccountController = async (req: Request, res: Respons
 };
 
 // Updated status check endpoint
-export const checkAccountStatusController = async (req: Request, res: Response): Promise<Response> => {
+export const checkAccountStatusController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const email = req.query.email as string | undefined;
 

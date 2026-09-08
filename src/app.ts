@@ -221,11 +221,7 @@ app.use("/api/v1/admin/settings", verifyAdminToken, AdminSettings);
 // Admin transactions
 app.use("/api/v1/admin/transactions", verifyAdminToken, AdminTransactions);
 
-/*
-|--------------------------------------------------------------------------
-| 404 Handler
-|--------------------------------------------------------------------------
-*/
+//404 handler
 
 app.use("*", (req, res) => {
   res.status(404).json({
@@ -235,19 +231,7 @@ app.use("*", (req, res) => {
   });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Global Error Handler
-|--------------------------------------------------------------------------
-*/
-
 app.use(errorHandler);
-
-/*
-|--------------------------------------------------------------------------
-| Start Server
-|--------------------------------------------------------------------------
-*/
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -258,17 +242,6 @@ const server = createServer(app);
 // Connect to database before starting server
 await connectToDb();
 
-// Background job worker — a continuous setInterval poll loop. Render
-// runs this as a persistent, always-on process, so this is exactly
-// the right place for it (this would NOT be safe on a serverless
-// platform like Vercel — see the git history / LEDGER_MIGRATION.md
-// if you ever move off Render, since that constraint would come back).
-// Starts by default; set RUN_BACKGROUND_WORKER=false to disable —
-// e.g. if you later split this into multiple Render instances behind
-// a load balancer and want only a dedicated single instance/service
-// polling the queue, to avoid every instance processing it in
-// parallel (the worker's job-claim is atomic — see queueWorker.js —
-// so running it on every instance is safe, just redundant).
 if (process.env.RUN_BACKGROUND_WORKER !== "false") {
   queueWorker.start();
   queueWorker.setupGracefulShutdown();
