@@ -32,6 +32,7 @@ dotenv.config();
 // here — just the fields this handler actually reads (checked against
 // every access site below), left loose everywhere else rather than
 // modeling the full payload precisely.
+
 interface PaystackChargeEvent {
   event: string;
   data: {
@@ -66,6 +67,7 @@ export const handleWebhook = async (
 
   // Verify signature against the exact bytes Paystack sent, not a
   // re-serialization of the parsed body.
+
   const hash = crypto
     .createHmac("sha512", secret)
     .update(req.rawBody)

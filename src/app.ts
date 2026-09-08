@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
+import { Server } from "socket.io";
 import type { CorsOptions } from "cors";
 
 import userRouter from "./routes/user.js";
@@ -59,11 +60,11 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 | that surfaces through a request.
 */
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("🔥 Unhandled Promise Rejection:", reason);
+  console.error("Unhandled Promise Rejection:", reason);
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("🔥 Uncaught Exception:", error);
+  console.error("Unhandled Exception:", error);
 });
 
 //Core setup
@@ -238,6 +239,37 @@ const PORT = Number(process.env.PORT) || 8080;
 const { createServer } = await import("http");
 
 const server = createServer(app);
+
+// ══════════════════════════════════════════════════════════════════
+// Socket.IO — scoped to a single purpose: pushing a live balance
+// update to a user's device the moment the Paystack webhook credits
+// their wallet (see handleWebhook in webhook/version2/funds.ts,
+// which calls `req.app.locals.io.to(email).emit("balance_updated", ...)`).
+// No other realtime feature lives on this socket layer. Clients join
+// a room named after their own email right after connecting; the
+// webhook targets that room by email, no socket-ID tracking needed.
+// ══════════════════════════════════════════════════════════════════
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on("connection", (socket) => {
+  socket.on("join", (email: string) => {
+    if (typeof email === "string" && email.trim()) {
+      socket.join(email.toLowerCase().trim());
+    }
+  });
+
+  socket.on("disconnect", () => {
+    // no-op — rooms are cleaned up automatically by socket.io on disconnect
+  });
+});
+
+app.locals.io = io;
 
 // Connect to database before starting server
 await connectToDb();

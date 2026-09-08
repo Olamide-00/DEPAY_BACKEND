@@ -1,12 +1,19 @@
-import JobQueue, { type IJobQueue, type JobQueueDocument } from '../../models/version2/queue.js';
-import History from '../../models/history.js';
-import { sendTransactionNotification } from '../emailService/transferNotification.js';
-import { updateRevenue } from '../../utils/revenue.js';
-import { CONFIG, JOB_TYPES, JOB_STATUS } from '../../utils/version2/constants.js';
-import { createReservedAccount } from './walletService/createReserveAccount.js';
-import { sendPushNotification } from '../../controller/version2/pushNotification/pushNotification.js';
-import User from '../../models/users.js';
-import type { RevenueType } from '../../models/revenue.js';
+import JobQueue, {
+  type IJobQueue,
+  type JobQueueDocument,
+} from "../../models/version2/queue.js";
+import History from "../../models/history.js";
+import { sendTransactionNotification } from "../emailService/transferNotification.js";
+import { updateRevenue } from "../../utils/revenue.js";
+import {
+  CONFIG,
+  JOB_TYPES,
+  JOB_STATUS,
+} from "../../utils/version2/constants.js";
+import { createReservedAccount } from "./walletService/createReserveAccount.js";
+import { sendPushNotification } from "../../controller/version2/pushNotification/pushNotification.js";
+import User from "../../models/users.js";
+import type { RevenueType } from "../../models/revenue.js";
 
 // ══════════════════════════════════════════════════════════════════
 // Background job worker
@@ -40,13 +47,21 @@ export class QueueWorker {
   private isProcessing = false;
   private processingJobs = new Set<string>();
   private intervalId: NodeJS.Timeout | null = null;
+  // Tracks consecutive DB-level failures in processJobQueue (not
+  // per-job failures) so a sustained outage — e.g. a DNS blip on the
+  // Atlas hostname — logs a burst at the start, goes quiet, then
+  // pings again periodically, instead of one line every poll for the
+  // whole outage. Resets to 0 the moment a poll succeeds again.
+  private consecutiveDbErrors = 0;
 
-  async processSingleJob(job: IJobQueue & { _id: unknown }): Promise<JobResult> {
+  async processSingleJob(
+    job: IJobQueue & { _id: unknown },
+  ): Promise<JobResult> {
     const jobId = String(job._id);
 
     // Prevent duplicate processing within this process
     if (this.processingJobs.has(jobId)) {
-      return { success: false, reason: 'already_processing' };
+      return { success: false, reason: "already_processing" };
     }
 
     this.processingJobs.add(jobId);
@@ -56,9 +71,9 @@ export class QueueWorker {
         await JobQueue.findByIdAndUpdate(jobId, {
           status: JOB_STATUS.FAILED,
           processedAt: new Date(),
-          error: 'Max attempts exceeded',
+          error: "Max attempts exceeded",
         });
-        return { success: false, reason: 'max_attempts' };
+        return { success: false, reason: "max_attempts" };
       }
 
       // Atomic claim: only flip PENDING -> PROCESSING if it's still
@@ -77,14 +92,21 @@ export class QueueWorker {
       );
 
       if (!claimed) {
-        return { success: false, reason: 'claimed_by_another_worker' };
+        return { success: false, reason: "claimed_by_another_worker" };
       }
 
       console.log(`Processing job ${jobId} (attempt ${claimed.attempts})`);
 
       switch (job.type) {
         case JOB_TYPES.EMAIL_NOTIFICATION: {
-          const { email, transactionType, amount, transactionId, timestamp, userName } = job.data as Record<string, string | number>;
+          const {
+            email,
+            transactionType,
+            amount,
+            transactionId,
+            timestamp,
+            userName,
+          } = job.data as Record<string, string | number>;
           await sendTransactionNotification(
             String(email),
             String(transactionType),
@@ -101,13 +123,20 @@ export class QueueWorker {
           break;
 
         case JOB_TYPES.REVENUE_UPDATE: {
-          const { type, amount: revenueAmount } = job.data as { type: RevenueType; amount: number };
+          const { type, amount: revenueAmount } = job.data as {
+            type: RevenueType;
+            amount: number;
+          };
           await updateRevenue(type, revenueAmount);
           break;
         }
 
         case JOB_TYPES.PUSH_NOTIFICATION: {
-          const { pushToken, title, body } = job.data as { pushToken: string; title: string; body: string };
+          const { pushToken, title, body } = job.data as {
+            pushToken: string;
+            title: string;
+            body: string;
+          };
           await sendPushNotification(pushToken, title, body);
           break;
         }
@@ -128,7 +157,10 @@ export class QueueWorker {
       console.log(`Job ${jobId} completed successfully`);
       return { success: true };
     } catch (processingError) {
-      const message = processingError instanceof Error ? processingError.message : String(processingError);
+      const message =
+        processingError instanceof Error
+          ? processingError.message
+          : String(processingError);
       console.error(`Job ${jobId} processing failed:`, message);
 
       const nextRetry = new Date();
@@ -145,24 +177,33 @@ export class QueueWorker {
 
       if (job.attempts + 1 >= job.maxAttempts) {
         updateData.status = JOB_STATUS.FAILED;
-        console.log(`Job ${jobId} marked as FAILED after ${job.attempts + 1} attempts`);
+        console.log(
+          `Job ${jobId} marked as FAILED after ${job.attempts + 1} attempts`,
+        );
       } else {
         updateData.status = JOB_STATUS.PENDING;
         updateData.nextRetry = nextRetry;
-        console.log(`Job ${jobId} scheduled for retry at ${nextRetry.toISOString()}`);
+        console.log(
+          `Job ${jobId} scheduled for retry at ${nextRetry.toISOString()}`,
+        );
       }
 
       await JobQueue.findByIdAndUpdate(jobId, updateData);
-      return { success: false, reason: 'processing_error' };
+      return { success: false, reason: "processing_error" };
     } finally {
       this.processingJobs.delete(jobId);
     }
   }
 
-  async processReservedAccountCreation(job: IJobQueue & { _id: unknown }): Promise<unknown> {
-    const { accountData, userId } = job.data as { accountData: { email: string; [key: string]: unknown }; userId: string };
+  async processReservedAccountCreation(
+    job: IJobQueue & { _id: unknown },
+  ): Promise<unknown> {
+    const { accountData, userId } = job.data as {
+      accountData: { email: string; [key: string]: unknown };
+      userId: string;
+    };
 
-    console.log('Processing reserved account creation', {
+    console.log("Processing reserved account creation", {
       jobId: job._id,
       userId,
       email: accountData.email,
@@ -171,8 +212,8 @@ export class QueueWorker {
 
     const processedData = {
       ...accountData,
-      preferred_bank: 'wema-bank',
-      country: 'NG',
+      preferred_bank: "wema-bank",
+      country: "NG",
     };
 
     const response = await createReservedAccount(processedData);
@@ -187,7 +228,7 @@ export class QueueWorker {
       throw new Error(`User with email ${accountData.email} not found`);
     }
 
-    console.log('Reserved account created successfully', {
+    console.log("Reserved account created successfully", {
       jobId: job._id,
       userId,
       email: accountData.email,
@@ -213,6 +254,7 @@ export class QueueWorker {
         .lean();
 
       if (eligibleJobs.length === 0) {
+        this.consecutiveDbErrors = 0;
         return { processed: false, count: 0 };
       }
 
@@ -227,7 +269,11 @@ export class QueueWorker {
       const successfulJobs = results.filter((r) => r.success).length;
       const failedJobs = results.filter((r) => !r.success).length;
 
-      console.log(`Batch processing complete: ${successfulJobs} successful, ${failedJobs} failed`);
+      console.log(
+        `Batch processing complete: ${successfulJobs} successful, ${failedJobs} failed`,
+      );
+
+      this.consecutiveDbErrors = 0;
 
       return {
         processed: true,
@@ -237,14 +283,29 @@ export class QueueWorker {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('Queue processing error:', message);
+
+      this.consecutiveDbErrors += 1;
+
+      // Only log every 10th consecutive DB-level failure once things
+      // are clearly degraded rather than a one-off — avoids flooding
+      // logs during an extended outage while still surfacing the issue.
+      if (
+        this.consecutiveDbErrors <= 3 ||
+        this.consecutiveDbErrors % 10 === 0
+      ) {
+        console.error(
+          `Queue processing error (${this.consecutiveDbErrors} consecutive):`,
+          message,
+        );
+      }
+
       return { processed: false, error: message };
     }
   }
 
   start(): void {
     if (this.intervalId) {
-      console.log('Worker already started');
+      console.log("Worker already started");
       return;
     }
 
@@ -255,41 +316,49 @@ export class QueueWorker {
       try {
         await this.processJobQueue();
       } catch (error) {
-        console.error('Worker batch error:', error instanceof Error ? error.message : error);
+        console.error(
+          "Worker batch error:",
+          error instanceof Error ? error.message : error,
+        );
       } finally {
         this.isProcessing = false;
       }
     }, CONFIG.PROCESSING_INTERVAL);
 
-    console.log('Background job worker started successfully');
+    console.log("Background job worker started successfully");
   }
 
   stop(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('Background job worker stopped');
+      console.log("Background job worker stopped");
     }
   }
 
   setupGracefulShutdown(): void {
     const shutdown = async () => {
-      console.log('Shutting down queue worker gracefully...');
+      console.log("Shutting down queue worker gracefully...");
       this.stop();
 
       let attempts = 0;
-      while ((this.isProcessing || this.processingJobs.size > 0) && attempts < 30) {
-        console.log(`Waiting for ${this.processingJobs.size} jobs to complete...`);
+      while (
+        (this.isProcessing || this.processingJobs.size > 0) &&
+        attempts < 30
+      ) {
+        console.log(
+          `Waiting for ${this.processingJobs.size} jobs to complete...`,
+        );
         await new Promise((resolve) => setTimeout(resolve, 1000));
         attempts++;
       }
 
-      console.log('Queue worker shutdown complete');
+      console.log("Queue worker shutdown complete");
       process.exit(0);
     };
 
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   }
 
   async getHealth() {
@@ -297,10 +366,10 @@ export class QueueWorker {
       const stats = await JobQueue.aggregate([
         {
           $group: {
-            _id: '$status',
+            _id: "$status",
             count: { $sum: 1 },
-            oldest: { $min: '$createdAt' },
-            newest: { $max: '$createdAt' },
+            oldest: { $min: "$createdAt" },
+            newest: { $max: "$createdAt" },
           },
         },
       ]);
