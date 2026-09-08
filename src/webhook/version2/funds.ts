@@ -19,6 +19,13 @@ dotenv.config();
 // guaranteed unique per charge) as the ledger idempotency key, so a
 // duplicate delivery is a guaranteed no-op rather than a double
 // credit.
+//
+// Signature verification is done against `req.rawBody` (captured in
+// app.ts's express.json `verify` hook) rather than
+// `JSON.stringify(req.body)`. Paystack signs the exact bytes it sent;
+// re-serializing the parsed object is not guaranteed to reproduce
+// those bytes (key order / number formatting can differ), which
+// silently breaks the signature check and makes every webhook 401.
 // ══════════════════════════════════════════════════════════════════
 
 // Paystack's webhook payload is large and only partially documented
@@ -37,7 +44,10 @@ interface PaystackChargeEvent {
   };
 }
 
-export const handleWebhook = async (req: Request, res: Response): Promise<Response> => {
+export const handleWebhook = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const secret = process.env.SECRET_KEY;
 
   if (!secret) {
@@ -47,10 +57,18 @@ export const handleWebhook = async (req: Request, res: Response): Promise<Respon
     return res.status(500).send("Server configuration error.");
   }
 
-  // Verify signature
+  if (!req.rawBody) {
+    console.error(
+      "[funding webhook] Missing rawBody — express.json's verify hook did not run for this request.",
+    );
+    return res.status(400).send("Bad request.");
+  }
+
+  // Verify signature against the exact bytes Paystack sent, not a
+  // re-serialization of the parsed body.
   const hash = crypto
     .createHmac("sha512", secret)
-    .update(JSON.stringify(req.body))
+    .update(req.rawBody)
     .digest("hex");
 
   if (hash !== req.headers["x-paystack-signature"]) {
@@ -70,7 +88,9 @@ export const handleWebhook = async (req: Request, res: Response): Promise<Respon
     const paystackReference = event.data.reference || event.data.id?.toString();
 
     if (!paystackReference) {
-      console.error("[funding webhook] Missing Paystack reference — cannot safely process without an idempotency key.");
+      console.error(
+        "[funding webhook] Missing Paystack reference — cannot safely process without an idempotency key.",
+      );
       return res.status(400).send("Missing transaction reference.");
     }
 
@@ -118,7 +138,9 @@ export const handleWebhook = async (req: Request, res: Response): Promise<Respon
         if (code !== 11000) {
           console.error(
             "[funding webhook] Failed to write Funding record:",
-            fundingRecordError instanceof Error ? fundingRecordError.message : fundingRecordError,
+            fundingRecordError instanceof Error
+              ? fundingRecordError.message
+              : fundingRecordError,
           );
         }
       }
@@ -130,29 +152,32 @@ export const handleWebhook = async (req: Request, res: Response): Promise<Respon
       // Referral bonus — first successful funding only, credited to
       // the referrer. Also routed through the ledger now, keyed off
       // the same Paystack reference so it can't double-fire either.
-      if (user.referredBy && !user.redeemed) {
-        const referrer = await User.findOne({ tag: user.referredBy });
-        if (referrer) {
-          const bonus = 500;
-          try {
-            await creditWallet({
-              userId: referrer._id,
-              amount: bonus,
-              category: "REFERRAL_BONUS",
-              reference: `REFBONUS-${paystackReference}`,
-              description: `Referral bonus for referring ${email}`,
-              performedBy: "SYSTEM",
-              metadata: { referredUserId: user._id.toString(), referredEmail: email },
-            });
-            await User.updateOne({ _id: user._id }, { $set: { redeemed: true } });
-          } catch (bonusError) {
-            console.error(
-              "[funding webhook] Referral bonus credit failed:",
-              bonusError instanceof Error ? bonusError.message : bonusError,
-            );
-          }
-        }
-      }
+
+      //referral bonus is disabled for now, will be re-enabled later///////////////////
+
+      // if (user.referredBy && !user.redeemed) {
+      //   const referrer = await User.findOne({ tag: user.referredBy });
+      //   if (referrer) {
+      //     const bonus = 500;
+      //     try {
+      //       await creditWallet({
+      //         userId: referrer._id,
+      //         amount: bonus,
+      //         category: "REFERRAL_BONUS",
+      //         reference: `REFBONUS-${paystackReference}`,
+      //         description: `Referral bonus for referring ${email}`,
+      //         performedBy: "SYSTEM",
+      //         metadata: { referredUserId: user._id.toString(), referredEmail: email },
+      //       });
+      //       await User.updateOne({ _id: user._id }, { $set: { redeemed: true } });
+      //     } catch (bonusError) {
+      //       console.error(
+      //         "[funding webhook] Referral bonus credit failed:",
+      //         bonusError instanceof Error ? bonusError.message : bonusError,
+      //       );
+      //     }
+      //   }
+      // }
 
       // Push notification — queued (retried with backoff) rather
       // than a single fire-and-forget attempt.
@@ -169,7 +194,15 @@ export const handleWebhook = async (req: Request, res: Response): Promise<Respon
       }
 
       // Emit update via Socket.IO
-      const io = (req.app.locals as { io?: { to: (room: string) => { emit: (event: string, payload: unknown) => void } } }).io;
+      const io = (
+        req.app.locals as {
+          io?: {
+            to: (room: string) => {
+              emit: (event: string, payload: unknown) => void;
+            };
+          };
+        }
+      ).io;
       if (io) {
         io.to(email).emit("balance_updated", {
           newBalance,
