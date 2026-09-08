@@ -64,7 +64,10 @@ adminSchema.pre("save", async function (next) {
   next();
 });
 
-adminSchema.methods.comparePassword = function (this: AdminDocument, plain: string) {
+adminSchema.methods.comparePassword = function (
+  this: AdminDocument,
+  plain: string,
+) {
   return bcrypt.compare(plain, this.password);
 };
 

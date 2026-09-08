@@ -1,21 +1,5 @@
 import mongoose, { Schema, type HydratedDocument, type Model } from "mongoose";
 
-// ══════════════════════════════════════════════════════
-// Service & Pricing catalog — owned by the admin panel.
-//
-// Design note: this does NOT mirror the live VTU aggregator's raw
-// service list (which is granular per-biller, e.g. "mtn-data",
-// "dstv-compact", and changes shape by provider). Instead it holds
-// the 6 curated customer-facing categories the dashboard displays,
-// each with an admin-editable discount + enabled flag.
-//
-// `matchPattern` is a regex (as a string) used to compute "orders
-// today" by matching against History.service / History.serviceID,
-// since those fields currently hold inconsistent raw aggregator
-// values rather than a clean category key. Admins can tune the
-// pattern per service if the aggregator's naming changes.
-// ══════════════════════════════════════════════════════
-
 const CATEGORY_KEYS = [
   "airtime",
   "data",
@@ -68,10 +52,15 @@ const serviceSchema = new Schema<IService>(
   { timestamps: true },
 );
 
-const Service: Model<IService> = mongoose.model<IService>("Service", serviceSchema);
+const Service: Model<IService> = mongoose.model<IService>(
+  "Service",
+  serviceSchema,
+);
 
 // ── Default catalog, matches the dashboard UI 1:1 ────────
-export const DEFAULT_SERVICES: Array<Omit<IService, "updatedBy" | "createdAt" | "updatedAt">> = [
+export const DEFAULT_SERVICES: Array<
+  Omit<IService, "updatedBy" | "createdAt" | "updatedAt">
+> = [
   {
     key: "airtime",
     name: "Airtime Top-up",

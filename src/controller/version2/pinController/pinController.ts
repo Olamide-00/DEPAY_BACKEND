@@ -124,7 +124,7 @@ const resetPinAttempts = (email: string): void => {
   pinAttemptCache.delete(email);
 };
 
-// Enhanced user lookup with caching
+// user lookup with caching
 const findUserByEmail = async (email: string): Promise<UserDocument | null> => {
   const normalizedEmail = normalizeEmail(email);
 
@@ -151,7 +151,10 @@ const findUserByEmail = async (email: string): Promise<UserDocument | null> => {
 };
 
 // Set transaction PIN with all enhancements
-export const setPIN = async (req: Request, res: Response): Promise<Response> => {
+export const setPIN = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const { email, pin } = req.body;
 
@@ -224,7 +227,10 @@ export const setPIN = async (req: Request, res: Response): Promise<Response> => 
 };
 
 // Verify transaction PIN with all enhancements
-export const verifyPIN = async (req: Request, res: Response): Promise<Response> => {
+export const verifyPIN = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const { email, pin } = req.body;
 
@@ -305,7 +311,10 @@ export const verifyPIN = async (req: Request, res: Response): Promise<Response> 
 };
 
 // Update transaction PIN with all enhancements
-export const updatePIN = async (req: Request, res: Response): Promise<Response> => {
+export const updatePIN = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const { newPin } = req.body;
     const { email } = req.body;
@@ -339,25 +348,6 @@ export const updatePIN = async (req: Request, res: Response): Promise<Response> 
         message: "User not found",
       });
     }
-
-    // OTP validation with retry logic
-    // if (!user.otp || user.otpExpires < new Date()) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Invalid or expired OTP"
-    //   });
-    // }
-
-    // const isOtpMatch = await retryOperation(() =>
-    //   bcrypt.compare(otp, user.otp)
-    // );
-
-    // if (!isOtpMatch) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Invalid OTP"
-    //   });
-    // }
 
     const hashedNewPin = await retryOperation(() =>
       bcrypt.hash(newPin, CONFIG.PIN_HASH_ROUNDS),
