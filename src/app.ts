@@ -210,6 +210,29 @@ app.use("/api/v1/admin/auth", AdminAuthRouter);
 // Admin users
 app.use("/api/v1/admin/users", verifyAdminToken, userManagementRouter);
 
+// Admin fee config & profit analytics — mounted ahead of the
+// broader /api/v1/admin and /api/v1/admin/settings mounts below,
+// since those share this path as a prefix. Express matches
+// middleware in registration order, so if these were registered
+// after the broader mounts, every request here would needlessly
+// pass through 2-3 extra layers first (AdminRouter, then
+// AdminSettings, both calling next() since neither has a matching
+// route) before reaching the right handler — and each layer's
+// verifyAdminToken does a real DB lookup (Admin.findById), so that
+// was 2-3x the necessary DB calls per request. Registering the more
+// specific paths first means they're matched immediately, with a
+// single auth check.
+app.use(
+  "/api/v1/admin/settings/fees",
+  verifyAdminToken,
+  serviceFeeConfigRoutes,
+);
+app.use(
+  "/api/v1/admin/analytics/profit",
+  verifyAdminToken,
+  profitAnalyticsRoutes,
+);
+
 // General admin routes
 app.use("/api/v1/admin", verifyAdminToken, AdminRouter);
 
@@ -224,17 +247,6 @@ app.use("/api/v1/admin/settings", verifyAdminToken, AdminSettings);
 
 // Admin transactions
 app.use("/api/v1/admin/transactions", verifyAdminToken, AdminTransactions);
-
-app.use(
-  "/api/v1/admin/settings/fees",
-  verifyAdminToken,
-  serviceFeeConfigRoutes,
-);
-app.use(
-  "/api/v1/admin/analytics/profit",
-  verifyAdminToken,
-  profitAnalyticsRoutes,
-);
 
 //404 handler
 
