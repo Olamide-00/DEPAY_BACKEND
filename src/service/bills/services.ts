@@ -12,7 +12,11 @@ import {
   creditWallet,
   InsufficientBalanceError,
 } from "../ledger/ledgerService.js";
-import type { PayBillPayload, VTPassPayResponseData } from "../../types/vtpass.js";
+import { calculateFee } from "./feeService.js";
+import type {
+  PayBillPayload,
+  VTPassPayResponseData,
+} from "../../types/vtpass.js";
 
 dotenv.config();
 
@@ -36,13 +40,18 @@ export const getServices = async (identifier: string): Promise<unknown> => {
     const response = await axios.get(url, { headers });
     return response.data;
   } catch (error) {
-    const axiosError = error as { response?: { data: unknown }; message: string };
+    const axiosError = error as {
+      response?: { data: unknown };
+      message: string;
+    };
     console.error(
       "Error in getServices:",
       axiosError.response ? axiosError.response.data : axiosError.message,
     );
     throw new Error(
-      axiosError.response ? JSON.stringify(axiosError.response.data) : axiosError.message,
+      axiosError.response
+        ? JSON.stringify(axiosError.response.data)
+        : axiosError.message,
     );
   }
 };
@@ -58,22 +67,27 @@ export const getPackage = async (serviceID: string): Promise<unknown> => {
     const response = await axios.get(url, { headers });
     return response.data;
   } catch (error) {
-    const axiosError = error as { response?: { data: unknown }; message: string };
+    const axiosError = error as {
+      response?: { data: unknown };
+      message: string;
+    };
     console.error(
       "Error in getServiceVariations:",
       axiosError.response ? axiosError.response.data : axiosError.message,
     );
     throw new Error(
-      axiosError.response ? JSON.stringify(axiosError.response.data) : axiosError.message,
+      axiosError.response
+        ? JSON.stringify(axiosError.response.data)
+        : axiosError.message,
     );
   }
 };
-
 
 interface RefundAndRecordFailureParams {
   user: Pick<UserDocument, "_id" | "balance">;
   payload: PayBillPayload;
   totalDeduction: number;
+  fee: number;
   debitReference: string;
   historyId: mongoose.Types.ObjectId;
   transactionReference: string;
@@ -84,6 +98,7 @@ async function refundAndRecordFailure({
   user,
   payload,
   totalDeduction,
+  fee,
   debitReference,
   historyId,
   transactionReference,
@@ -101,11 +116,6 @@ async function refundAndRecordFailure({
       relatedId: historyId,
     });
   } catch (refundError) {
-    // This is the one place a silent failure would be catastrophic —
-    // the user was debited and VTPass didn't deliver, but the refund
-    // itself failed. Log loudly so it surfaces in monitoring/alerts;
-    // an admin can manually reverse via the ledger reversal endpoint
-    // using `debitReference` below.
     console.error(
       `[payBill] CRITICAL: refund failed for ${payload.email}, debitReference=${debitReference}:`,
       refundError instanceof Error ? refundError.message : refundError,
@@ -117,25 +127,35 @@ async function refundAndRecordFailure({
     userId: user._id,
     service: payload.serviceID,
     amount: payload.amount,
+    fee,
     transactionReference,
     status: "FAILED",
     additionalData: responseData,
     transactionNumber: payload.number,
+    serviceID: payload.serviceID,
   });
 }
 
-export const payBill = async (payload: PayBillPayload): Promise<VTPassPayResponseData> => {
-  const percentRev = payload.percentRev || 0;
-  const totalDeduction = Math.round((payload.amount || 0) + percentRev);
-
+export const payBill = async (
+  payload: PayBillPayload,
+): Promise<VTPassPayResponseData> => {
   if (!payload.email) {
     throw new Error("email is required");
   }
-  if (!totalDeduction || totalDeduction <= 0) {
+  if (!payload.amount || payload.amount <= 0) {
     throw new Error("Invalid amount");
   }
 
-  const user = await User.findOne({ email: payload.email }).select("_id balance");
+  const { fee } = await calculateFee(payload.serviceID, payload.amount);
+  const totalDeduction = Math.round((payload.amount + fee) * 100) / 100;
+
+  if (totalDeduction <= 0) {
+    throw new Error("Invalid amount");
+  }
+
+  const user = await User.findOne({ email: payload.email }).select(
+    "_id balance",
+  );
   if (!user) {
     throw new Error("User not found");
   }
@@ -158,6 +178,7 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
         serviceID: payload.serviceID,
         billersCode: payload.billersCode,
         variation_code: payload.variation_code,
+        fee,
       },
     });
   } catch (error) {
@@ -181,20 +202,26 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
       "Content-Type": "application/json",
     };
 
-    response = await axios.post<VTPassPayResponseData>(url, payload, { headers });
+    response = await axios.post<VTPassPayResponseData>(url, payload, {
+      headers,
+    });
   } catch (error) {
-    // Couldn't even reach / get a response from VTPass — refund and
-    // record the attempt, then surface the error to the caller.
-    const axiosError = error as { response?: { data: unknown }; message: string };
+    const axiosError = error as {
+      response?: { data: unknown };
+      message: string;
+    };
     const transactionReference = payload.request_id;
     await refundAndRecordFailure({
       user,
       payload,
       totalDeduction,
+      fee,
       debitReference,
       historyId,
       transactionReference,
-      responseData: axiosError.response ? axiosError.response.data : { message: axiosError.message },
+      responseData: axiosError.response
+        ? axiosError.response.data
+        : { message: axiosError.message },
     });
 
     console.error(
@@ -202,11 +229,14 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
       axiosError.response ? axiosError.response.data : axiosError.message,
     );
     throw new Error(
-      axiosError.response ? JSON.stringify(axiosError.response.data) : axiosError.message,
+      axiosError.response
+        ? JSON.stringify(axiosError.response.data)
+        : axiosError.message,
     );
   }
 
-  const transactionReference = response.data.paymentReference || payload.request_id;
+  const transactionReference =
+    response.data.paymentReference || payload.request_id;
   const delivered =
     response.status === 200 &&
     response.data?.content?.transactions?.status === "delivered";
@@ -218,11 +248,20 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
       return match ? match[1] : null;
     };
 
+    const txInfo = response.data.content?.transactions;
+    const costPrice = Number(txInfo?.total_amount ?? payload.amount);
+    const vtpassCommission = Number(txInfo?.commission ?? 0);
+    const profit = Math.round((totalDeduction - costPrice) * 100) / 100;
+
     await History.create({
       _id: historyId,
       userId: user._id,
-      service: response.data.content?.transactions?.type || payload.serviceID,
+      service: txInfo?.type || payload.serviceID,
       amount: payload.amount,
+      fee,
+      costPrice,
+      vtpassCommission,
+      profit,
       transactionReference,
       status: "SUCCESS",
       transactionNumber: payload.number,
@@ -241,23 +280,18 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
       additionalData: response.data,
     });
 
-    // Award JTokens only on confirmed delivered transaction
     awardJTokens(payload.email, payload.amount).catch((err) =>
       console.error("[payBill] JToken award error:", err),
     );
 
-    if (percentRev) {
-      updateRevenue("BILL", percentRev).catch((err) =>
+    if (profit) {
+      updateRevenue("BILL", profit).catch((err) =>
         console.error("[payBill] Revenue update error:", err),
       );
     }
 
     try {
       if (payload.pushToken) {
-        // Queued (with retry/backoff via the background worker)
-        // rather than a single unretried call — a transient Expo API
-        // hiccup shouldn't mean the user never finds out their
-        // payment succeeded.
         await queueService.queuePushNotification(
           payload.pushToken,
           "Transaction Successful",
@@ -268,12 +302,11 @@ export const payBill = async (payload: PayBillPayload): Promise<VTPassPayRespons
       console.error("Error queueing push notification:", notificationError);
     }
   } else {
-    // VTPass responded but did not deliver — refund and record as
-    // FAILED. No JTokens, no revenue recognized on a refunded fee.
     await refundAndRecordFailure({
       user,
       payload,
       totalDeduction,
+      fee,
       debitReference,
       historyId,
       transactionReference,

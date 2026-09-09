@@ -182,7 +182,11 @@ class AutoCacheManager<T = unknown> {
     }
   }
 
-  async autoRefresh(key: string, fetchOperation: () => Promise<T>, ttl: number): Promise<void> {
+  async autoRefresh(
+    key: string,
+    fetchOperation: () => Promise<T>,
+    ttl: number,
+  ): Promise<void> {
     const item = this.cache.get(key);
     if (!item) return;
 
@@ -196,7 +200,10 @@ class AutoCacheManager<T = unknown> {
         const newData = await fetchOperation();
         this.set(key, newData, ttl);
       } catch (error) {
-        console.warn(`Auto-refresh failed for ${key}:`, error instanceof Error ? error.message : error);
+        console.warn(
+          `Auto-refresh failed for ${key}:`,
+          error instanceof Error ? error.message : error,
+        );
       }
     }
   }
@@ -225,7 +232,8 @@ const packageCache = new AutoCacheManager();
 const historyCache = new AutoCacheManager<unknown[]>();
 
 // Utility functions
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 const withRetry = async <T>(
   operation: () => Promise<T>,
@@ -239,7 +247,10 @@ const withRetry = async <T>(
       return await operation();
     } catch (error) {
       lastError = error;
-      console.warn(`Attempt ${attempt} failed:`, error instanceof Error ? error.message : error);
+      console.warn(
+        `Attempt ${attempt} failed:`,
+        error instanceof Error ? error.message : error,
+      );
 
       if (attempt < maxRetries) {
         const exponentialDelay = delayMs * Math.pow(2, attempt - 1);
@@ -262,7 +273,10 @@ const normalizeEmail = (email: unknown): string | null => {
   return email.trim().toLowerCase();
 };
 
-const generateCacheKey = (prefix: string, ...args: Array<string | null | undefined>): string => {
+const generateCacheKey = (
+  prefix: string,
+  ...args: Array<string | null | undefined>
+): string => {
   return `${prefix}:${args.filter((arg) => arg != null).join(":")}`;
 };
 
@@ -291,7 +305,10 @@ const cacheWrapper = async <T>(
   return data;
 };
 
-export const getServicesController = async (req: Request, res: Response): Promise<Response> => {
+export const getServicesController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const { identifier } = req.query;
 
   try {
@@ -342,7 +359,10 @@ export const getServicesController = async (req: Request, res: Response): Promis
 // reintroduce retry here; if VTPass is flaky, the fix is provider
 // idempotency keys / status polling, not blind retries on a paid
 // action.
-export const payBillController = async (req: Request, res: Response): Promise<Response> => {
+export const payBillController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const payload = req.body as PayBillPayload;
 
@@ -364,7 +384,8 @@ export const payBillController = async (req: Request, res: Response): Promise<Re
 
     const data = await payBill(payload);
 
-    const userEmail = payload.email || (payload as Record<string, unknown>).customer_email;
+    const userEmail =
+      payload.email || (payload as Record<string, unknown>).customer_email;
     if (userEmail) {
       const historyKey = generateCacheKey(
         "bills_history",
@@ -384,20 +405,14 @@ export const payBillController = async (req: Request, res: Response): Promise<Re
 
     let statusCode = 500;
 
-    if (
-      message?.includes("insufficient") ||
-      message?.includes("balance")
-    ) {
+    if (message?.includes("insufficient") || message?.includes("balance")) {
       statusCode = 402;
     } else if (
       message?.includes("invalid") ||
       message?.includes("validation")
     ) {
       statusCode = 400;
-    } else if (
-      message?.includes("timeout") ||
-      message?.includes("network")
-    ) {
+    } else if (message?.includes("timeout") || message?.includes("network")) {
       statusCode = 408;
     }
 
@@ -408,7 +423,10 @@ export const payBillController = async (req: Request, res: Response): Promise<Re
   }
 };
 
-export const getServiceVariationsController = async (req: Request, res: Response): Promise<Response> => {
+export const getServiceVariationsController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const serviceID = req.query.serviceID || "mtn-data";
 
@@ -446,7 +464,10 @@ export const getServiceVariationsController = async (req: Request, res: Response
   }
 };
 
-export const getBillsHistories = async (req: Request, res: Response): Promise<Response> => {
+export const getBillsHistories = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const { email } = req.params;
 
   if (!email) {
@@ -492,7 +513,9 @@ export const getBillsHistories = async (req: Request, res: Response): Promise<Re
         });
 
         return histories.map((history) => {
-          const additionalData = history.additionalData as Record<string, any> | undefined;
+          const additionalData = history.additionalData as
+            | Record<string, any>
+            | undefined;
           return {
             service: history.service,
             amount: history.amount,
@@ -510,8 +533,10 @@ export const getBillsHistories = async (req: Request, res: Response): Promise<Re
             senderBank: history.senderBank,
             phone: additionalData?.content?.transactions?.phone || null,
             date: history.createdAt,
-            unique_element: additionalData?.content?.transactions?.unique_element || null,
-            transaction_id: additionalData?.content?.transactions?.transactionId || null,
+            unique_element:
+              additionalData?.content?.transactions?.unique_element || null,
+            transaction_id:
+              additionalData?.content?.transactions?.transactionId || null,
             transaction_date: additionalData?.transaction_date || null,
             token: history.token || null,
             units: history.units || null,

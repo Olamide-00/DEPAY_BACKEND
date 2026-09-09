@@ -25,6 +25,9 @@ import AdminSettings from "./admin/routes/settings.js";
 import AdminTransactions from "./admin/routes/transactions.js";
 import userManagementRouter from "./admin/routes/userManagement.js";
 
+import serviceFeeConfigRoutes from "./admin/routes/serviceFeeConfigRoutes.js";
+import profitAnalyticsRoutes from "./admin/routes/profitAnalyticsRoutes.js";
+
 import { verifyToken } from "./middleware/verifyToken.js";
 import { verifyAdminToken } from "./admin/middleware/verifyAdminToken.js";
 
@@ -221,6 +224,17 @@ app.use("/api/v1/admin/settings", verifyAdminToken, AdminSettings);
 
 // Admin transactions
 app.use("/api/v1/admin/transactions", verifyAdminToken, AdminTransactions);
+
+app.use(
+  "/api/v1/admin/settings/fees",
+  verifyAdminToken,
+  serviceFeeConfigRoutes,
+);
+app.use(
+  "/api/v1/admin/analytics/profit",
+  verifyAdminToken,
+  profitAnalyticsRoutes,
+);
 
 //404 handler
 

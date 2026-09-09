@@ -18,6 +18,10 @@ export interface IHistory {
   senderBank?: string;
   status: HistoryStatus;
   fee: number;
+
+  costPrice: number;
+  vtpassCommission: number;
+  profit: number;
   reversedAt: Date | null;
   reversedBy: mongoose.Types.ObjectId | null;
   token: string | null;
@@ -54,6 +58,9 @@ const historySchema = new Schema<IHistory>({
     default: "PENDING",
   },
   fee: { type: Number, default: 0, min: 0 },
+  costPrice: { type: Number, default: 0, min: 0 },
+  vtpassCommission: { type: Number, default: 0, min: 0 },
+  profit: { type: Number, default: 0 },
   reversedAt: { type: Date, default: null },
   reversedBy: { type: Schema.Types.ObjectId, ref: "Admin", default: null },
   token: { type: String, default: null },
@@ -68,21 +75,15 @@ const historySchema = new Schema<IHistory>({
   additionalData: { type: Schema.Types.Mixed },
 });
 
-// ── Indexes ──────────────────────────────────────────────────
-// `transactionReference` is already indexed via its `unique: true`
-// above. These cover the two query patterns actually used against
-// this collection (checked against every current query in the
-// codebase, not guessed):
-//   - getBillsHistories / a user's own transaction list:
-//     find({ userId }).sort({ createdAt: -1 })
-//   - admin transaction list: find({ status, createdAt: {$gte} })
-//     .sort({ createdAt: -1 }), sometimes filtered by status alone
-// Without these, both scan the entire collection — fine at a few
-// hundred documents, a real problem once history has grown past
-// tens of thousands of rows across 1000+ active users.
 historySchema.index({ userId: 1, createdAt: -1 });
 historySchema.index({ status: 1, createdAt: -1 });
+// Powers the admin profit-analytics endpoint: group by service over
+// a date range, or roll up total profit for the whole platform.
+historySchema.index({ serviceID: 1, status: 1, createdAt: -1 });
 
-const History: Model<IHistory> = mongoose.model<IHistory>("History", historySchema);
+const History: Model<IHistory> = mongoose.model<IHistory>(
+  "History",
+  historySchema,
+);
 
 export default History;
