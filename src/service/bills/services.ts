@@ -130,6 +130,14 @@ async function refundAndRecordFailure({
     fee,
     transactionReference,
     status: "FAILED",
+    // Money WAS debited from the wallet for this attempt (then
+    // refunded via creditWallet above) — type reflects that the
+    // original movement was a debit, distinct from `status` which
+    // reflects the outcome. This is what admin/controller/
+    // transactions.ts's reversal tool checks (`tx.type !== "DEBIT"`)
+    // before allowing a manual wallet credit — without this, every
+    // reversal attempt on a failed transaction was being rejected.
+    type: "DEBIT",
     additionalData: responseData,
     transactionNumber: payload.number,
     serviceID: payload.serviceID,
@@ -264,6 +272,13 @@ export const payBill = async (
       profit,
       transactionReference,
       status: "SUCCESS",
+      // Never set before this fix — admin/controller/dashboard.ts's
+      // totalSales/salesInPeriod, getSalesBreakdown, and
+      // userManagement.ts's per-user totalSales all filter on
+      // `type: "DEBIT"`. With this field absent, none of those
+      // queries ever matched a real bill payment; they silently
+      // returned 0 / empty regardless of actual transaction volume.
+      type: "DEBIT",
       transactionNumber: payload.number,
       token: response.data.token
         ? response.data.token.replace("Token : ", "")
