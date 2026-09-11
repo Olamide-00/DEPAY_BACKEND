@@ -63,13 +63,14 @@ const sendPushNotificationToAllUsers = async (message: string) => {
     }
 
     // Prepare the messages array for all valid users
-    const messages: import("expo-server-sdk").ExpoPushMessage[] = validUsers.map((user) => ({
-      to: user.pushToken,
-      sound: "default",
-      title: "New Notification",
-      body: message,
-      data: { message },
-    }));
+    const messages: import("expo-server-sdk").ExpoPushMessage[] =
+      validUsers.map((user) => ({
+        to: user.pushToken,
+        sound: "default",
+        title: "New Notification",
+        body: message,
+        data: { message },
+      }));
 
     // Send notifications to all users
     const tickets = await expo.sendPushNotificationsAsync(messages);

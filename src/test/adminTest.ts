@@ -24,10 +24,22 @@ dotenv.config();
 // ══════════════════════════════════════════════════════
 
 const NAMES = [
-  "Chinedu Okafor", "Amaka Nwosu", "Tunde Bakare", "Ngozi Eze",
-  "Yusuf Abdullahi", "Bisi Adeyemi", "Emeka Okonkwo", "Folake Ogundipe",
-  "Ibrahim Mohammed", "Chiamaka Obi", "Segun Adewale", "Blessing Etim",
-  "Kelechi Nnamdi", "Aisha Bello", "Tobi Ojo", "Grace Effiong",
+  "Chinedu Okafor",
+  "Amaka Nwosu",
+  "Tunde Bakare",
+  "Ngozi Eze",
+  "Yusuf Abdullahi",
+  "Bisi Adeyemi",
+  "Emeka Okonkwo",
+  "Folake Ogundipe",
+  "Ibrahim Mohammed",
+  "Chiamaka Obi",
+  "Segun Adewale",
+  "Blessing Etim",
+  "Kelechi Nnamdi",
+  "Aisha Bello",
+  "Tobi Ojo",
+  "Grace Effiong",
 ];
 
 const NETWORKS = ["mtn", "glo", "airtel", "9mobile"];
@@ -37,8 +49,10 @@ const BETTING = ["bet9ja", "sportybet", "betking"];
 const FUNDING_CHANNELS = ["Bank Transfer", "Card", "USSD"];
 
 const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const randInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
-const daysAgo = (n: number): Date => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+const randInt = (min: number, max: number): number =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+const daysAgo = (n: number): Date =>
+  new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
 async function seed() {
   await connectToDb();
@@ -57,7 +71,9 @@ async function seed() {
     password: "SamplePassword123",
     role: "admin",
   });
-  console.log(`✅ Admin created — login with sample.admin@depay-sample.test / SamplePassword123`);
+  console.log(
+    `✅ Admin created — login with sample.admin@depay-sample.test / SamplePassword123`,
+  );
 
   // ── 2. Services catalog (reuses your real default set) ──
   await Service.insertMany(DEFAULT_SERVICES);
@@ -86,8 +102,10 @@ async function seed() {
       isWalletCreated: true,
       balance: randInt(0, 150000),
       lastLogin: daysAgo(randInt(0, 30)),
-      bvn: Math.random() > 0.3 ? String(randInt(10000000000, 99999999999)) : null,
-      nin: Math.random() > 0.4 ? String(randInt(10000000000, 99999999999)) : null,
+      bvn:
+        Math.random() > 0.3 ? String(randInt(10000000000, 99999999999)) : null,
+      nin:
+        Math.random() > 0.4 ? String(randInt(10000000000, 99999999999)) : null,
       createdAt: daysAgo(randInt(1, 180)),
     });
   }
@@ -97,18 +115,31 @@ async function seed() {
   // ── 5. Transaction history (bill payments) per user ──
   const historyDocs = [];
   const STATUSES_WEIGHTED = [
-    "SUCCESS", "SUCCESS", "SUCCESS", "SUCCESS", "SUCCESS",
-    "PENDING", "PENDING",
-    "FAILED", "FAILED",
+    "SUCCESS",
+    "SUCCESS",
+    "SUCCESS",
+    "SUCCESS",
+    "SUCCESS",
+    "PENDING",
+    "PENDING",
+    "FAILED",
+    "FAILED",
   ];
   let refCounter = 1000;
 
   for (const user of insertedUsers) {
     const txCount = randInt(2, 12);
     for (let i = 0; i < txCount; i++) {
-      const category = rand(["airtime", "data", "cable", "electricity", "betting"]);
+      const category = rand([
+        "airtime",
+        "data",
+        "cable",
+        "electricity",
+        "betting",
+      ]);
       let serviceID;
-      if (category === "airtime" || category === "data") serviceID = `${rand(NETWORKS)}-${category}`;
+      if (category === "airtime" || category === "data")
+        serviceID = `${rand(NETWORKS)}-${category}`;
       else if (category === "cable") serviceID = rand(CABLE);
       else if (category === "electricity") serviceID = rand(DISCOS);
       else serviceID = rand(BETTING);
@@ -153,9 +184,13 @@ async function seed() {
   await Funding.insertMany(fundingDocs);
   console.log(`✅ ${fundingDocs.length} funding records seeded`);
 
-  console.log("\n🎉 Done. Sample data is tagged with @depay-sample.test emails —");
+  console.log(
+    "\n🎉 Done. Sample data is tagged with @depay-sample.test emails —",
+  );
   console.log(`   Sample users' password: ${SAMPLE_USER_PASSWORD}`);
-  console.log("   re-run this script anytime to reset it without touching real data.");
+  console.log(
+    "   re-run this script anytime to reset it without touching real data.",
+  );
 
   await mongoose.disconnect();
   process.exit(0);

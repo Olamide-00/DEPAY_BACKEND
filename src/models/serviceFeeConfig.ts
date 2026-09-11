@@ -2,8 +2,18 @@ import mongoose, { Schema, type HydratedDocument, type Model } from "mongoose";
 
 export type FeeType = "flat" | "percentage";
 
+export const FEE_CATEGORIES = [
+  "airtime",
+  "data",
+  "tv",
+  "electricity",
+  "education",
+] as const;
+
+export type FeeCategory = (typeof FEE_CATEGORIES)[number];
+
 export interface IServiceFeeConfig {
-  serviceID: string;
+  category: FeeCategory;
   feeType: FeeType;
   feeValue: number; // flat: naira amount. percentage: e.g. 2 means 2%
   minFee?: number | null; // only meaningful for feeType: "percentage"
@@ -18,12 +28,11 @@ export type ServiceFeeConfigDocument = HydratedDocument<IServiceFeeConfig>;
 
 const serviceFeeConfigSchema = new Schema<IServiceFeeConfig>(
   {
-    serviceID: {
+    category: {
       type: String,
+      enum: FEE_CATEGORIES,
       required: true,
       unique: true,
-      trim: true,
-      lowercase: true,
       index: true,
     },
     feeType: {

@@ -1,4 +1,3 @@
-// routes/admin/serviceFeeConfigRoutes.ts
 import { Router } from "express";
 import {
   listFeeConfigs,
@@ -10,8 +9,8 @@ import {
 const router = Router();
 
 router.get("/", listFeeConfigs);
-router.put("/:serviceID", upsertFeeConfig);
-router.patch("/:serviceID/toggle", toggleFeeConfig);
-router.delete("/:serviceID", deleteFeeConfig);
+router.put("/:category", upsertFeeConfig);
+router.patch("/:category/toggle", toggleFeeConfig);
+router.delete("/:category", deleteFeeConfig);
 
 export default router;

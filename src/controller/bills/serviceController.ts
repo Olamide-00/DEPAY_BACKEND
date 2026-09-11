@@ -8,13 +8,10 @@ import {
 } from "../../service/bills/services.js";
 import type { PayBillPayload } from "../../types/vtpass.js";
 
-// NOTE: this v1 controller is not mounted on any route (see
-// routes/bills.js, which uses controller/version2/bills/serviceController.ts
-// instead) — confirmed by grep across src/routes before converting. Kept
-// and converted for completeness rather than deleted, since it wasn't
-// asked to be removed.
-
-export const getServicesController = async (req: Request, res: Response): Promise<Response> => {
+export const getServicesController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const { identifier } = req.query;
   try {
     const data = await getServices(String(identifier));
@@ -32,7 +29,10 @@ export const getServicesController = async (req: Request, res: Response): Promis
   }
 };
 
-export const payBillController = async (req: Request, res: Response): Promise<Response> => {
+export const payBillController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const payload = req.body as PayBillPayload;
 
@@ -52,7 +52,10 @@ export const payBillController = async (req: Request, res: Response): Promise<Re
   }
 };
 
-export const getServiceVariationsController = async (req: Request, res: Response): Promise<Response> => {
+export const getServiceVariationsController = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     // Get serviceID from query parameters or default to 'mtn-data'
     const serviceID = String(req.query.serviceID || "mtn-data");
@@ -73,7 +76,10 @@ export const getServiceVariationsController = async (req: Request, res: Response
 };
 
 // get bills histories
-export const getBillsHistories = async (req: Request, res: Response): Promise<Response> => {
+export const getBillsHistories = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   const { email } = req.params;
   if (!email) return res.status(400).json({ message: "Email is required" });
 
@@ -89,7 +95,9 @@ export const getBillsHistories = async (req: Request, res: Response): Promise<Re
 
     // Extract only required fields
     const filteredHistories = histories.map((history) => {
-      const additionalData = history.additionalData as Record<string, any> | undefined;
+      const additionalData = history.additionalData as
+        | Record<string, any>
+        | undefined;
       return {
         service: history.service,
         amount: history.amount,
@@ -104,8 +112,10 @@ export const getBillsHistories = async (req: Request, res: Response): Promise<Re
         senderBank: history.senderBank,
         phone: additionalData?.content?.transactions?.phone || null,
         date: history.createdAt,
-        unique_element: additionalData?.content?.transactions?.unique_element || null,
-        transaction_id: additionalData?.content?.transactions?.transactionId || null,
+        unique_element:
+          additionalData?.content?.transactions?.unique_element || null,
+        transaction_id:
+          additionalData?.content?.transactions?.transactionId || null,
         transaction_date: additionalData?.transaction_date || null,
         token: history.token || null,
         units: history.units || null,

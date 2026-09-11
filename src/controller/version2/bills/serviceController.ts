@@ -347,18 +347,7 @@ export const getServicesController = async (
 };
 
 //pay bill controller
-//
-// IMPORTANT: payBill() is NOT idempotent — it debits a wallet and
-// calls a real, non-idempotent third-party payment API (VTPass).
-// It used to be wrapped in `withRetry`, which is meant for safe,
-// read-only operations (getServices/getPackage). On a transient
-// failure (e.g. a slow VTPass response that times out on our side
-// but still completes on theirs), that retry loop could call
-// payBill up to 3 times with the same payload — debiting the wallet
-// and potentially fulfilling the same bill multiple times. Do not
-// reintroduce retry here; if VTPass is flaky, the fix is provider
-// idempotency keys / status polling, not blind retries on a paid
-// action.
+
 export const payBillController = async (
   req: Request,
   res: Response,
@@ -373,11 +362,6 @@ export const payBillController = async (
       });
     }
 
-    // Trust the authenticated session for identity, not whatever
-    // email the client put in the request body — verifyToken (see
-    // app.js) puts the token's email on req.user. Without this, any
-    // caller could pay a bill against someone else's wallet just by
-    // putting their email in the payload.
     if (req.user?.email) {
       payload.email = req.user.email;
     }
@@ -484,11 +468,6 @@ export const getBillsHistories = async (
       });
     }
 
-    // A logged-in user can only fetch their own bill history — the
-    // route is authenticated (see app.js) but the email comes from
-    // the URL param, so it still needs to be checked against the
-    // token's identity or anyone could read anyone else's history by
-    // guessing/knowing their email.
     if (req.user?.email && req.user.email !== normalizedEmail) {
       return res.status(403).json({
         message: "You can only view your own transaction history",

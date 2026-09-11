@@ -1,15 +1,20 @@
 import type { Request, Response } from "express";
 import ServiceFeeConfig, {
+  FEE_CATEGORIES,
+  type FeeCategory,
   type FeeType,
 } from "../../models/serviceFeeConfig.js";
 
 interface UpsertFeeBody {
-  serviceID?: string;
   feeType?: FeeType;
   feeValue?: number;
   minFee?: number | null;
   maxFee?: number | null;
   isEnabled?: boolean;
+}
+
+function isValidCategory(value: string): value is FeeCategory {
+  return (FEE_CATEGORIES as readonly string[]).includes(value);
 }
 
 // GET /api/v1/admin/settings/fees
@@ -18,7 +23,7 @@ export const listFeeConfigs = async (
   res: Response,
 ): Promise<Response> => {
   try {
-    const configs = await ServiceFeeConfig.find().sort({ serviceID: 1 });
+    const configs = await ServiceFeeConfig.find().sort({ category: 1 });
     return res.status(200).json({ success: true, data: configs });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -27,23 +32,19 @@ export const listFeeConfigs = async (
   }
 };
 
-// PUT /api/v1/admin/settings/fees/:serviceID
-// Upsert — admin can create a new config or update an existing one
-// from the same form. `serviceID` in the URL is the source of
-// truth; any serviceID in the body is ignored to avoid a mismatch
-// between the two.
 export const upsertFeeConfig = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const { serviceID } = req.params;
+    const { category } = req.params;
     const body = req.body as UpsertFeeBody;
 
-    if (!serviceID) {
-      return res
-        .status(400)
-        .json({ success: false, message: "serviceID is required" });
+    if (!category || !isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `category must be one of: ${FEE_CATEGORIES.join(", ")}`,
+      });
     }
 
     const feeType = body.feeType ?? "flat";
@@ -63,7 +64,7 @@ export const upsertFeeConfig = async (
     }
 
     const update = {
-      serviceID: serviceID.toLowerCase().trim(),
+      category,
       feeType,
       feeValue,
       minFee: body.minFee ?? null,
@@ -73,7 +74,7 @@ export const upsertFeeConfig = async (
     };
 
     const config = await ServiceFeeConfig.findOneAndUpdate(
-      { serviceID: update.serviceID },
+      { category },
       { $set: update },
       { new: true, upsert: true, runValidators: true },
     );
@@ -86,18 +87,21 @@ export const upsertFeeConfig = async (
   }
 };
 
-// PATCH /api/v1/admin/settings/fees/:serviceID/toggle
-// Quick on/off switch — separate from the full upsert so the
-// dashboard toggle UI doesn't need to resend the whole fee config
-// just to flip isEnabled.
+// PATCH /api/v1/admin/settings/fees/:category/toggle
 export const toggleFeeConfig = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const { serviceID } = req.params;
+    const { category } = req.params;
     const { isEnabled } = req.body as { isEnabled?: boolean };
 
+    if (!category || !isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `category must be one of: ${FEE_CATEGORIES.join(", ")}`,
+      });
+    }
     if (typeof isEnabled !== "boolean") {
       return res
         .status(400)
@@ -105,7 +109,7 @@ export const toggleFeeConfig = async (
     }
 
     const config = await ServiceFeeConfig.findOneAndUpdate(
-      { serviceID: serviceID.toLowerCase().trim() },
+      { category },
       { $set: { isEnabled, updatedByAdminId: req.admin?.id ?? null } },
       { new: true },
     );
@@ -113,7 +117,7 @@ export const toggleFeeConfig = async (
     if (!config) {
       return res.status(404).json({
         success: false,
-        message: "No fee config found for this serviceID",
+        message: "No fee config found for this category",
       });
     }
 
@@ -125,21 +129,27 @@ export const toggleFeeConfig = async (
   }
 };
 
-// DELETE /api/v1/admin/settings/fees/:serviceID
+// DELETE /api/v1/admin/settings/fees/:category
 export const deleteFeeConfig = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const { serviceID } = req.params;
-    const result = await ServiceFeeConfig.findOneAndDelete({
-      serviceID: serviceID.toLowerCase().trim(),
-    });
+    const { category } = req.params;
+
+    if (!category || !isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `category must be one of: ${FEE_CATEGORIES.join(", ")}`,
+      });
+    }
+
+    const result = await ServiceFeeConfig.findOneAndDelete({ category });
 
     if (!result) {
       return res.status(404).json({
         success: false,
-        message: "No fee config found for this serviceID",
+        message: "No fee config found for this category",
       });
     }
 
