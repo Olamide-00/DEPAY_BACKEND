@@ -26,9 +26,12 @@ const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000;
 const PIN_REGEX = /^\d{4,6}$/;
 
 // ─── Validation helpers ───────────────────────────────────────
-const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validatePassword = (password: string): boolean => !!(password && password.length >= 8);
-const validatePIN = (pin: unknown): boolean => typeof pin === "string" && PIN_REGEX.test(pin);
+const validateEmail = (email: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePassword = (password: string): boolean =>
+  !!(password && password.length >= 8);
+const validatePIN = (pin: unknown): boolean =>
+  typeof pin === "string" && PIN_REGEX.test(pin);
 const normalizeEmail = (email: unknown): string | null => {
   if (!email || typeof email !== "string") return null;
   return email.trim().toLowerCase();
@@ -36,15 +39,22 @@ const normalizeEmail = (email: unknown): string | null => {
 
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
-const hashOTP = async (otp: string): Promise<string> => await bcrypt.hash(otp, 10);
+const hashOTP = async (otp: string): Promise<string> =>
+  await bcrypt.hash(otp, 10);
 
-const isAccountLocked = (user: { accountLockedUntil?: Date | null }): boolean => {
+const isAccountLocked = (user: {
+  accountLockedUntil?: Date | null;
+}): boolean => {
   if (!user.accountLockedUntil) return false;
   return new Date() < new Date(user.accountLockedUntil);
 };
 
 // ─── OTP attempt tracking — uses updateOne (works with lean docs) ───
-const checkOTPAttempts = async (user: { email: string; otpAttemptWindowStart?: Date | null; otpAttempts?: number }) => {
+const checkOTPAttempts = async (user: {
+  email: string;
+  otpAttemptWindowStart?: Date | null;
+  otpAttempts?: number;
+}) => {
   const now = new Date();
   const windowStart = user.otpAttemptWindowStart
     ? new Date(user.otpAttemptWindowStart)
@@ -53,7 +63,10 @@ const checkOTPAttempts = async (user: { email: string; otpAttemptWindowStart?: D
   let attempts = user.otpAttempts || 0;
 
   // Reset if window has passed
-  if (!windowStart || now.getTime() - windowStart.getTime() > OTP_ATTEMPT_WINDOW) {
+  if (
+    !windowStart ||
+    now.getTime() - windowStart.getTime() > OTP_ATTEMPT_WINDOW
+  ) {
     attempts = 0;
   }
 
@@ -69,7 +82,7 @@ const checkOTPAttempts = async (user: { email: string; otpAttemptWindowStart?: D
           otpAttemptWindowStart: now,
           accountLockedUntil: lockedUntil,
         },
-      }
+      },
     );
     return {
       locked: true,
@@ -85,7 +98,7 @@ const checkOTPAttempts = async (user: { email: string; otpAttemptWindowStart?: D
         otpAttempts: attempts,
         otpAttemptWindowStart: now,
       },
-    }
+    },
   );
 
   return {
@@ -98,7 +111,11 @@ const checkOTPAttempts = async (user: { email: string; otpAttemptWindowStart?: D
 // NOTE: requires `loginAttempts` and `loginAttemptWindowStart` fields on the
 // User schema (Number and Date respectively). Add them to models/users.js
 // if they don't already exist, or this will silently no-op on save.
-const checkLoginAttempts = async (user: { email: string; loginAttemptWindowStart?: Date | null; loginAttempts?: number }) => {
+const checkLoginAttempts = async (user: {
+  email: string;
+  loginAttemptWindowStart?: Date | null;
+  loginAttempts?: number;
+}) => {
   const now = new Date();
   const windowStart = user.loginAttemptWindowStart
     ? new Date(user.loginAttemptWindowStart)
@@ -106,7 +123,10 @@ const checkLoginAttempts = async (user: { email: string; loginAttemptWindowStart
 
   let attempts = user.loginAttempts || 0;
 
-  if (!windowStart || now.getTime() - windowStart.getTime() > LOGIN_ATTEMPT_WINDOW) {
+  if (
+    !windowStart ||
+    now.getTime() - windowStart.getTime() > LOGIN_ATTEMPT_WINDOW
+  ) {
     attempts = 0;
   }
 
@@ -122,7 +142,7 @@ const checkLoginAttempts = async (user: { email: string; loginAttemptWindowStart
           loginAttemptWindowStart: now,
           accountLockedUntil: lockedUntil,
         },
-      }
+      },
     );
     return {
       locked: true,
@@ -138,7 +158,7 @@ const checkLoginAttempts = async (user: { email: string; loginAttemptWindowStart
         loginAttempts: attempts,
         loginAttemptWindowStart: now,
       },
-    }
+    },
   );
 
   return { locked: false, remainingAttempts: MAX_LOGIN_ATTEMPTS - attempts };
@@ -152,7 +172,7 @@ const resetLoginAttempts = async (email: string): Promise<void> => {
         loginAttempts: 0,
         loginAttemptWindowStart: null,
       },
-    }
+    },
   );
 };
 
@@ -160,7 +180,7 @@ const resetLoginAttempts = async (email: string): Promise<void> => {
 const findUserWithOTP = async (email: string) => {
   return await User.findOne({ email })
     .select(
-      "+otp +otpExpires +otpAttempts +otpAttemptWindowStart +accountLockedUntil"
+      "+otp +otpExpires +otpAttempts +otpAttemptWindowStart +accountLockedUntil",
     )
     .lean();
 };
@@ -168,14 +188,17 @@ const findUserWithOTP = async (email: string) => {
 // For verifyResetOTP — needs password too, not lean so save() works
 const findUserForOTPVerification = async (email: string) => {
   return await User.findOne({ email }).select(
-    "+otp +otpExpires +password +otpAttempts +accountLockedUntil"
+    "+otp +otpExpires +password +otpAttempts +accountLockedUntil",
   );
 };
 
 // ─────────────────────────────────────────────────────────────
 // STEP 1: Send OTP to email before registration
 // ─────────────────────────────────────────────────────────────
-export const sendRegistrationOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const sendRegistrationOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.body;
 
@@ -219,7 +242,10 @@ export const sendRegistrationOTP = async (req: Request, res: Response): Promise<
     try {
       await sendOTPEmail(normalizedEmail, otp);
     } catch (emailError) {
-      console.error("Failed to send OTP email:", (emailError instanceof Error ? emailError.message : String(emailError)));
+      console.error(
+        "Failed to send OTP email:",
+        emailError instanceof Error ? emailError.message : String(emailError),
+      );
       return res.status(500).json({
         message: "Failed to send OTP email. Please try again.",
       });
@@ -236,7 +262,12 @@ export const sendRegistrationOTP = async (req: Request, res: Response): Promise<
     }
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -244,7 +275,10 @@ export const sendRegistrationOTP = async (req: Request, res: Response): Promise<
 // ─────────────────────────────────────────────────────────────
 // STEP 2: Verify OTP
 // ─────────────────────────────────────────────────────────────
-export const verifyOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const verifyOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email, otp } = req.body;
 
@@ -269,7 +303,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response |
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Try again in ${lockTimeRemaining} minutes.`,
@@ -316,7 +350,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response |
           accountLockedUntil: null,
         },
         $unset: { otp: "", otpExpires: "" },
-      }
+      },
     );
 
     return res.status(200).json({
@@ -328,7 +362,12 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response |
     console.error("Verify OTP Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -336,7 +375,10 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response |
 // ─────────────────────────────────────────────────────────────
 // STEP 3: Complete registration after email verification
 // ─────────────────────────────────────────────────────────────
-export const completeRegistration = async (req: Request, res: Response): Promise<Response | void> => {
+export const completeRegistration = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const {
       email,
@@ -464,7 +506,10 @@ export const completeRegistration = async (req: Request, res: Response): Promise
     } catch (emailError) {
       // Registration already succeeded — don't fail the request over a
       // non-critical welcome email.
-      console.error("Failed to send welcome email:", (emailError instanceof Error ? emailError.message : String(emailError)));
+      console.error(
+        "Failed to send welcome email:",
+        emailError instanceof Error ? emailError.message : String(emailError),
+      );
     }
 
     return res.status(201).json({
@@ -477,7 +522,12 @@ export const completeRegistration = async (req: Request, res: Response): Promise
     }
     res.status(500).json({
       message: "Server error occurred during registration",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -485,7 +535,10 @@ export const completeRegistration = async (req: Request, res: Response): Promise
 // ─────────────────────────────────────────────────────────────
 // Resend OTP
 // ─────────────────────────────────────────────────────────────
-export const resendOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const resendOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.body;
 
@@ -505,7 +558,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Try again in ${lockTimeRemaining} minutes.`,
@@ -521,7 +574,10 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
       new Date(user.otpExpires).getTime() - Date.now() > OTP_EXPIRY - 60000
     ) {
       const waitTime = Math.ceil(
-        (new Date(user.otpExpires).getTime() - Date.now() - (OTP_EXPIRY - 60000)) / 1000
+        (new Date(user.otpExpires).getTime() -
+          Date.now() -
+          (OTP_EXPIRY - 60000)) /
+          1000,
       );
       return res.status(429).json({
         message: `Please wait ${waitTime} seconds before requesting a new OTP.`,
@@ -538,7 +594,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
           otp: hashedOTP,
           otpExpires: new Date(Date.now() + OTP_EXPIRY),
         },
-      }
+      },
     );
 
     await sendOTPEmail(normalizedEmail, otp);
@@ -548,7 +604,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
         await sendPushNotification(
           user.pushToken,
           "OTP Resent 🔄",
-          `Your OTP is ${otp}`
+          `Your OTP is ${otp}`,
         );
       }
     } catch (notificationError) {
@@ -563,7 +619,12 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
     console.error("Resend OTP Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -571,7 +632,10 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response |
 // ─────────────────────────────────────────────────────────────
 // Login
 // ─────────────────────────────────────────────────────────────
-export const loginUser = async (req: Request, res: Response): Promise<Response | void> => {
+export const loginUser = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email, password } = req.body;
 
@@ -587,7 +651,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      "+password"
+      "+password",
     );
     if (!user) {
       return res.status(400).json({ message: "Invalid login details" });
@@ -595,7 +659,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Please try again in ${lockTimeRemaining} minutes.`,
@@ -622,8 +686,30 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
     }
 
     if (!user.isActivated) {
-      return res.status(400).json({
-        message: "Please verify your account first. Check your email for OTP.",
+      // FIX: isActivated is now overloaded between two very different
+      // situations — a placeholder registration that never finished,
+      // and a fully registered user an admin has since banned via
+      // toggleBanUser (which only ever touches isActivated, never
+      // isEmailVerified). Both used to get the same "check your email
+      // for OTP" message, which is actively wrong for a banned user —
+      // they were already verified, and there's no OTP to check.
+      //
+      // Reaching this point already means a real password existed and
+      // matched (the `!user.password` guard above rules out the normal
+      // "never finished step 3" placeholder case), so in the common
+      // case this branch is a ban, not an unverified signup. The one
+      // legitimate edge case this still protects — someone resetting
+      // their password via the forgot-password flow before completing
+      // registration — is exactly when isEmailVerified is still false,
+      // so the branch below still routes them correctly.
+      if (!user.isEmailVerified) {
+        return res.status(400).json({
+          message:
+            "Please verify your account first. Check your email for OTP.",
+        });
+      }
+      return res.status(403).json({
+        message: "Your account has been suspended. Please contact support.",
       });
     }
 
@@ -631,7 +717,11 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
 
     // FIX: keep the JWT payload identical between login and refresh so
     // anything reading req.user.tag doesn't break after a token refresh.
-    const userPayload = { id: user._id.toString(), email: user.email, tag: user.tag };
+    const userPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      tag: user.tag,
+    };
     const token = generateAccessToken(userPayload);
     const refreshToken = generateRefreshToken(userPayload);
 
@@ -641,7 +731,12 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
 
     const ipAddress =
       req.ip ||
-      (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"])?.split(",")[0]?.trim() ||
+      (Array.isArray(req.headers["x-forwarded-for"])
+        ? req.headers["x-forwarded-for"][0]
+        : req.headers["x-forwarded-for"]
+      )
+        ?.split(",")[0]
+        ?.trim() ||
       req.socket?.remoteAddress ||
       "Unknown IP";
     const device = req.headers["user-agent"] || "Unknown Device";
@@ -651,7 +746,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
         await sendPushNotification(
           user.pushToken,
           "Login Notification",
-          "Login successful."
+          "Login successful.",
         );
       }
     } catch (notificationError) {
@@ -659,7 +754,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
     }
 
     sendLoginNotification(user.email, ipAddress, device).catch((err) =>
-      console.error("Login notification email error:", err)
+      console.error("Login notification email error:", err),
     );
 
     res.status(200).json({
@@ -685,7 +780,12 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
     console.error("Login Error:", error);
     res.status(500).json({
       message: "Server error occurred during login",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -693,7 +793,10 @@ export const loginUser = async (req: Request, res: Response): Promise<Response |
 // ─────────────────────────────────────────────────────────────
 // Refresh token endpoint for biometric login and token rotation
 // ─────────────────────────────────────────────────────────────
-export const refreshAccessToken = async (req: Request, res: Response): Promise<Response | void> => {
+export const refreshAccessToken = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { refreshToken } = req.body;
 
@@ -704,7 +807,11 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
     // 1. Verify signature + expiry
     let decoded: { id: string; email: string; tag?: string };
     try {
-      decoded = verifyRefreshToken(refreshToken) as { id: string; email: string; tag?: string };
+      decoded = verifyRefreshToken(refreshToken) as {
+        id: string;
+        email: string;
+        tag?: string;
+      };
     } catch {
       return res
         .status(401)
@@ -721,7 +828,7 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Please try again in ${lockTimeRemaining} minutes.`,
@@ -732,7 +839,11 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
     // FIX: keep payload shape identical to loginUser (include tag) so
     // downstream code reading req.user.tag behaves consistently regardless
     // of whether the current token came from login or refresh.
-    const userPayload = { id: user._id.toString(), email: user.email, tag: user.tag };
+    const userPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      tag: user.tag,
+    };
     const newAccessToken = generateAccessToken(userPayload);
     const newRefreshToken = generateRefreshToken(userPayload);
 
@@ -744,7 +855,7 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
           refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       },
-      { new: true } // return updated document
+      { new: true }, // return updated document
     );
 
     if (!updatedUser) {
@@ -762,7 +873,12 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
     console.error("Refresh Token Error:", error);
     res.status(500).json({
       message: "Server error during token refresh",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -770,7 +886,10 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
 // ─────────────────────────────────────────────────────────────
 // Get User
 // ─────────────────────────────────────────────────────────────
-export const getUser = async (req: Request, res: Response): Promise<Response | void> => {
+export const getUser = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.params;
 
@@ -784,7 +903,7 @@ export const getUser = async (req: Request, res: Response): Promise<Response | v
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      "email fullName isActivated jTokens profilePicture balance dateOfBirth phoneNumber gender isWalletCreated bankName accountNumber accountDetails"
+      "email fullName isActivated jTokens profilePicture balance dateOfBirth phoneNumber gender isWalletCreated bankName accountNumber accountDetails",
     );
 
     if (!user) {
@@ -796,7 +915,12 @@ export const getUser = async (req: Request, res: Response): Promise<Response | v
     console.error("Get User Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -804,7 +928,10 @@ export const getUser = async (req: Request, res: Response): Promise<Response | v
 // ─────────────────────────────────────────────────────────────
 // Set Profile Picture
 // ─────────────────────────────────────────────────────────────
-export const setProfilePicture = async (req: Request, res: Response): Promise<Response | void> => {
+export const setProfilePicture = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email, profilePicture } = req.body;
 
@@ -831,7 +958,7 @@ export const setProfilePicture = async (req: Request, res: Response): Promise<Re
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { profilePicture: profilePicture.trim() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!user) {
@@ -847,7 +974,12 @@ export const setProfilePicture = async (req: Request, res: Response): Promise<Re
     console.error("Set Profile Picture Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -855,7 +987,10 @@ export const setProfilePicture = async (req: Request, res: Response): Promise<Re
 // ─────────────────────────────────────────────────────────────
 // Get Wallet Balance
 // ─────────────────────────────────────────────────────────────
-export const getWalletBalance = async (req: Request, res: Response): Promise<Response | void> => {
+export const getWalletBalance = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.params;
 
@@ -869,7 +1004,7 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      "balance"
+      "balance",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -880,7 +1015,12 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
     console.error("Error fetching wallet balance:", error);
     return res.status(500).json({
       message: "Internal Server Error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -888,7 +1028,10 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
 // ─────────────────────────────────────────────────────────────
 // Send Transaction OTP
 // ─────────────────────────────────────────────────────────────
-export const sendTransactionOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const sendTransactionOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.body;
 
@@ -908,7 +1051,7 @@ export const sendTransactionOTP = async (req: Request, res: Response): Promise<R
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Try again in ${lockTimeRemaining} minutes.`,
@@ -926,7 +1069,10 @@ export const sendTransactionOTP = async (req: Request, res: Response): Promise<R
       new Date(user.otpExpires).getTime() - Date.now() > OTP_EXPIRY - 60000
     ) {
       const waitTime = Math.ceil(
-        (new Date(user.otpExpires).getTime() - Date.now() - (OTP_EXPIRY - 60000)) / 1000
+        (new Date(user.otpExpires).getTime() -
+          Date.now() -
+          (OTP_EXPIRY - 60000)) /
+          1000,
       );
       return res.status(429).json({
         message: `Please wait ${waitTime} seconds before requesting a new OTP.`,
@@ -945,7 +1091,7 @@ export const sendTransactionOTP = async (req: Request, res: Response): Promise<R
         await sendPushNotification(
           user.pushToken,
           "Transaction OTP 🔄",
-          `Your OTP is ${otp}`
+          `Your OTP is ${otp}`,
         );
       }
     } catch (notificationError) {
@@ -960,7 +1106,12 @@ export const sendTransactionOTP = async (req: Request, res: Response): Promise<R
     console.error("Send Transaction OTP Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -968,7 +1119,10 @@ export const sendTransactionOTP = async (req: Request, res: Response): Promise<R
 // ─────────────────────────────────────────────────────────────
 // Send Reset Password OTP
 // ─────────────────────────────────────────────────────────────
-export const sendResetOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const sendResetOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.body;
 
@@ -992,7 +1146,7 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Try again in ${lockTimeRemaining} minutes.`,
@@ -1004,7 +1158,10 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
       new Date(user.otpExpires).getTime() - Date.now() > OTP_EXPIRY - 60000
     ) {
       const waitTime = Math.ceil(
-        (new Date(user.otpExpires).getTime() - Date.now() - (OTP_EXPIRY - 60000)) / 1000
+        (new Date(user.otpExpires).getTime() -
+          Date.now() -
+          (OTP_EXPIRY - 60000)) /
+          1000,
       );
       return res.status(429).json({
         message: `Please wait ${waitTime} seconds before requesting a new OTP.`,
@@ -1021,7 +1178,7 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
           otp: hashedOTP,
           otpExpires: new Date(Date.now() + OTP_EXPIRY),
         },
-      }
+      },
     );
 
     await sendOTPEmail(normalizedEmail, otp);
@@ -1031,7 +1188,7 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
         await sendPushNotification(
           user.pushToken,
           "Password Reset OTP 🔄",
-          `Your OTP is ${otp}`
+          `Your OTP is ${otp}`,
         );
       }
     } catch (notificationError) {
@@ -1046,7 +1203,12 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
     console.error("Send Reset Password OTP Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -1054,7 +1216,10 @@ export const sendResetOTP = async (req: Request, res: Response): Promise<Respons
 // ─────────────────────────────────────────────────────────────
 // Verify Reset OTP and Update Password
 // ─────────────────────────────────────────────────────────────
-export const verifyResetOTP = async (req: Request, res: Response): Promise<Response | void> => {
+export const verifyResetOTP = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email, otp, password } = req.body;
 
@@ -1083,7 +1248,7 @@ export const verifyResetOTP = async (req: Request, res: Response): Promise<Respo
 
     if (isAccountLocked(user)) {
       const lockTimeRemaining = Math.ceil(
-        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000
+        ((user.accountLockedUntil as Date).getTime() - Date.now()) / 60000,
       );
       return res.status(403).json({
         message: `Account is temporarily locked. Try again in ${lockTimeRemaining} minutes.`,
@@ -1142,7 +1307,12 @@ export const verifyResetOTP = async (req: Request, res: Response): Promise<Respo
     console.error("Verify Reset OTP Error:", error);
     res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -1150,7 +1320,10 @@ export const verifyResetOTP = async (req: Request, res: Response): Promise<Respo
 // ─────────────────────────────────────────────────────────────
 // Delete User by Email
 // ─────────────────────────────────────────────────────────────
-export const deleteUserByEmail = async (req: Request, res: Response): Promise<Response | void> => {
+export const deleteUserByEmail = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.params;
 
@@ -1173,7 +1346,12 @@ export const deleteUserByEmail = async (req: Request, res: Response): Promise<Re
     console.error("Delete User Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -1181,7 +1359,10 @@ export const deleteUserByEmail = async (req: Request, res: Response): Promise<Re
 // ─────────────────────────────────────────────────────────────
 // Update Phone Number
 // ─────────────────────────────────────────────────────────────
-export const updatePhoneNumber = async (req: Request, res: Response): Promise<Response | void> => {
+export const updatePhoneNumber = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email, phoneNumber } = req.body;
 
@@ -1199,7 +1380,7 @@ export const updatePhoneNumber = async (req: Request, res: Response): Promise<Re
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { phoneNumber },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!user) {
@@ -1214,7 +1395,12 @@ export const updatePhoneNumber = async (req: Request, res: Response): Promise<Re
     console.error("Update Phone Number Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
@@ -1222,7 +1408,10 @@ export const updatePhoneNumber = async (req: Request, res: Response): Promise<Re
 // ─────────────────────────────────────────────────────────────
 // Update User Profile
 // ─────────────────────────────────────────────────────────────
-export const updateUserProfile = async (req: Request, res: Response): Promise<Response | void> => {
+export const updateUserProfile = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { email } = req.params;
 
@@ -1331,7 +1520,7 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<Re
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { $set: updates },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("fullName phoneNumber gender dateOfBirth profilePicture email");
 
     if (!user) {
@@ -1354,7 +1543,12 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<Re
     console.error("Update User Profile Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : undefined
+          : undefined,
     });
   }
 };
