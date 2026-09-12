@@ -7,6 +7,7 @@ import {
   payBill,
 } from "../../../service/bills/services.js";
 import type { PayBillPayload } from "../../../types/vtpass.js";
+import { normalizeServiceLabel } from "../../../utils/serviceLabel.js";
 
 // Constants
 const CACHE_TTL = {
@@ -495,14 +496,26 @@ export const getBillsHistories = async (
           const additionalData = history.additionalData as
             | Record<string, any>
             | undefined;
+          const { category, label } = normalizeServiceLabel(
+            history.serviceID || history.service,
+            history.name,
+          );
           return {
+            _id: history._id,
             service: history.service,
+            // `category` drives icon selection, `label` is the friendly
+            // name shown in the list (e.g. "Data Purchase" instead of
+            // "wallet" for every row).
+            category,
+            label,
             amount: history.amount,
             transactionReference: history.transactionReference,
-            status: history.status,
+            status: (history.status || "PENDING").toLowerCase(),
             receipentName: history.receipentName,
             receipentBank: history.receipentBank,
-            type: history.type,
+            // Normalize to lowercase "debit"/"credit" — the app filters
+            // and colors rows off this exact casing.
+            type: (history.type || "DEBIT").toLowerCase(),
             name: history.name,
             serviceID: history.serviceID,
             variation_code: history.variation_code,
@@ -516,6 +529,8 @@ export const getBillsHistories = async (
               additionalData?.content?.transactions?.unique_element || null,
             transaction_id:
               additionalData?.content?.transactions?.transactionId || null,
+            // Keep the raw provider value available for the receipt/detail
+            // screen only — never use it as the primary display date.
             transaction_date: additionalData?.transaction_date || null,
             token: history.token || null,
             units: history.units || null,

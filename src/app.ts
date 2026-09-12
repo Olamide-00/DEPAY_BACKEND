@@ -16,6 +16,7 @@ import jTokensRouter from "./routes/jTokens.js";
 import voucherRouter from "./routes/voucher.js";
 import webhookRouter from "./routes/webhook.js";
 import internalRouter from "./routes/internal.js";
+import bankRouter from "./routes/bank.js";
 
 import AdminRouter from "./admin/routes/admin.js";
 import AdminAuthRouter from "./admin/routes/auth.js";
@@ -193,6 +194,9 @@ app.use("/api/v1", verificationRouter);
 
 // PIN
 app.use("/api/v1/PIN", PINRouter);
+
+//funding history
+app.use("/api/v1/bank", verifyToken, bankRouter);
 
 // J-Tokens
 

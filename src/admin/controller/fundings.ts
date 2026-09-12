@@ -9,12 +9,10 @@ const RANGE_MS: Record<string, number> = {
   "90d": 90 * 24 * 60 * 60 * 1000,
 };
 
-// ══════════════════════════════════════════════════════
-// GET /api/admin/fundings
-// Query: search, channel, range, page, limit
-// ══════════════════════════════════════════════════════
-
-export const getFundings = async (req: Request, res: Response): Promise<Response | void> => {
+export const getFundings = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const {
       search = "",
@@ -87,7 +85,7 @@ export const getFundings = async (req: Request, res: Response): Promise<Response
           ],
           total: [{ $count: "count" }],
         },
-      }
+      },
     );
 
     const [result] = await Funding.aggregate(pipeline);
@@ -112,12 +110,10 @@ export const getFundings = async (req: Request, res: Response): Promise<Response
   }
 };
 
-// ══════════════════════════════════════════════════════
-// GET /api/admin/fundings/stats
-// Query: range (default 90d)
-// ══════════════════════════════════════════════════════
-
-export const getFundingStats = async (req: Request, res: Response): Promise<Response | void> => {
+export const getFundingStats = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { range = "90d" } = req.query as Record<string, string>;
     const match: Record<string, unknown> = {};

@@ -3,21 +3,15 @@ import { v4 as uuidv4 } from "uuid";
 import mongoose from "mongoose";
 import User from "../../models/users.js";
 import Funding from "../../models/funding.js";
-import { creditWallet, getStatement } from "../../service/ledger/ledgerService.js";
+import {
+  creditWallet,
+  getStatement,
+} from "../../service/ledger/ledgerService.js";
 
-// ══════════════════════════════════════════════════════
-// POST /api/admin/users/:id/fund
-// Body: { amount: number, idempotencyKey?: string }
-//
-// idempotencyKey should be generated once client-side per submit
-// attempt (e.g. a UUID created when the "Credit wallet" button is
-// first clicked) and re-sent unchanged on any retry. This makes a
-// double-click or a network-timeout retry a no-op instead of a
-// double credit — enforced by the ledger's unique reference index,
-// not just a client-side disable-button check.
-// ══════════════════════════════════════════════════════
-
-export const fundUserWallet = async (req: Request, res: Response): Promise<Response | void> => {
+export const fundUserWallet = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { id } = req.params;
     const { amount, idempotencyKey } = req.body;
@@ -37,7 +31,9 @@ export const fundUserWallet = async (req: Request, res: Response): Promise<Respo
 
     const user = await User.findById(id).select("fullName email balance");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const reference = `ADM-${idempotencyKey || uuidv4()}`;
@@ -63,9 +59,6 @@ export const fundUserWallet = async (req: Request, res: Response): Promise<Respo
       });
     }
 
-    // Mirror into Funding so it shows up in the existing admin
-    // funding-history views. The ledger entry above is the source of
-    // truth; this is a best-effort, backward-compatible mirror.
     let funding = null;
     try {
       funding = await Funding.create({
@@ -92,34 +85,38 @@ export const fundUserWallet = async (req: Request, res: Response): Promise<Respo
   }
 };
 
-// ══════════════════════════════════════════════════════
-// GET /api/admin/users/:id/ledger
-// Query: page, limit, category
-//
-// The full, immutable wallet statement for a user — every credit and
-// debit that ever touched their balance, in order, with a running
-// balance snapshot on each row. This is the "easy to track any
-// issue" view the ledger exists for.
-// ══════════════════════════════════════════════════════
-
-export const getUserLedger = async (req: Request, res: Response): Promise<Response | void> => {
+export const getUserLedger = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const id = String(req.params.id);
-    const { page = 1, limit = 20, category } = req.query as { page?: string; limit?: string; category?: string };
+    const {
+      page = 1,
+      limit = 20,
+      category,
+    } = req.query as { page?: string; limit?: string; category?: string };
 
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ success: false, message: "Invalid user ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID" });
     }
 
     const user = await User.findById(id).select("fullName email balance");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const { entries, pagination } = await getStatement(id, {
       page: Number(page),
       limit: Number(limit),
-      category: (category as import("../../models/ledgerEntry.js").LedgerCategory | undefined) ?? null,
+      category:
+        (category as
+          | import("../../models/ledgerEntry.js").LedgerCategory
+          | undefined) ?? null,
     });
 
     res.json({
