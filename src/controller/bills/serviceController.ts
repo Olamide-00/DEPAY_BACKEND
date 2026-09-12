@@ -36,11 +36,12 @@ export const payBillController = async (
   try {
     const payload = req.body as PayBillPayload;
 
-    const data = await payBill(payload);
+    const { raw, transaction } = await payBill(payload);
 
     return res.status(200).json({
       success: true,
-      data,
+      data: raw,
+      transaction,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

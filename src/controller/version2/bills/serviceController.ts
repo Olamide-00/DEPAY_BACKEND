@@ -367,7 +367,7 @@ export const payBillController = async (
       payload.email = req.user.email;
     }
 
-    const data = await payBill(payload);
+    const { raw, transaction } = await payBill(payload);
 
     const userEmail =
       payload.email || (payload as Record<string, unknown>).customer_email;
@@ -382,24 +382,16 @@ export const payBillController = async (
 
     return res.status(200).json({
       success: true,
-      data,
+
+      data: raw,
+
+      transaction,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Error in payBillController:", message);
 
-    let statusCode = 500;
-
-    if (message?.includes("insufficient") || message?.includes("balance")) {
-      statusCode = 402;
-    } else if (
-      message?.includes("invalid") ||
-      message?.includes("validation")
-    ) {
-      statusCode = 400;
-    } else if (message?.includes("timeout") || message?.includes("network")) {
-      statusCode = 408;
-    }
+    const statusCode = message.toLowerCase().includes("not found") ? 404 : 500;
 
     return res.status(statusCode).json({
       success: false,

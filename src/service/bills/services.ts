@@ -13,12 +13,36 @@ import {
   InsufficientBalanceError,
 } from "../ledger/ledgerService.js";
 import { calculateFee } from "./feeService.js";
+import { normalizeServiceLabel } from "../../utils/serviceLabel.js";
 import type {
   PayBillPayload,
   VTPassPayResponseData,
 } from "../../types/vtpass.js";
 
 dotenv.config();
+
+export interface NormalizedTransaction {
+  _id: string;
+  service?: string;
+  category: string;
+  label: string;
+  amount: number;
+  fee: number;
+  transactionReference: string;
+  status: "success" | "failed";
+  type: "debit";
+  date: Date;
+  transaction_id?: string | null;
+  unique_element?: string | null;
+  token?: string | null;
+  units?: string | null;
+  serialNumber?: string | null;
+  pin?: string | null;
+  jambPin?: string | null;
+  serviceID?: string;
+  variation_code?: string;
+  billersCode?: string;
+}
 
 const {
   VTPASS_API_KEY,
@@ -103,7 +127,7 @@ async function refundAndRecordFailure({
   historyId,
   transactionReference,
   responseData,
-}: RefundAndRecordFailureParams): Promise<void> {
+}: RefundAndRecordFailureParams): Promise<NormalizedTransaction> {
   try {
     await creditWallet({
       userId: user._id,
@@ -130,23 +154,40 @@ async function refundAndRecordFailure({
     fee,
     transactionReference,
     status: "FAILED",
-    // Money WAS debited from the wallet for this attempt (then
-    // refunded via creditWallet above) — type reflects that the
-    // original movement was a debit, distinct from `status` which
-    // reflects the outcome. This is what admin/controller/
-    // transactions.ts's reversal tool checks (`tx.type !== "DEBIT"`)
-    // before allowing a manual wallet credit — without this, every
-    // reversal attempt on a failed transaction was being rejected.
+
     type: "DEBIT",
     additionalData: responseData,
     transactionNumber: payload.number,
     serviceID: payload.serviceID,
   });
+
+  const { category, label } = normalizeServiceLabel(payload.serviceID);
+
+  return {
+    _id: historyId.toString(),
+    service: payload.serviceID,
+    category,
+    label,
+    amount: payload.amount,
+    fee,
+    transactionReference,
+    status: "failed",
+    type: "debit",
+    date: new Date(),
+    serviceID: payload.serviceID,
+    variation_code: payload.variation_code,
+    billersCode: payload.billersCode,
+  };
+}
+
+export interface PayBillResult {
+  raw: VTPassPayResponseData;
+  transaction: NormalizedTransaction;
 }
 
 export const payBill = async (
   payload: PayBillPayload,
-): Promise<VTPassPayResponseData> => {
+): Promise<PayBillResult> => {
   if (!payload.email) {
     throw new Error("email is required");
   }
@@ -249,6 +290,8 @@ export const payBill = async (
     response.status === 200 &&
     response.data?.content?.transactions?.status === "delivered";
 
+  let transaction: NormalizedTransaction;
+
   if (delivered) {
     const extractJambPin = (pinString?: string): string | null => {
       if (!pinString) return null;
@@ -260,11 +303,21 @@ export const payBill = async (
     const costPrice = Number(txInfo?.total_amount ?? payload.amount);
     const vtpassCommission = Number(txInfo?.commission ?? 0);
     const profit = Math.round((totalDeduction - costPrice) * 100) / 100;
+    const resolvedService = txInfo?.type || payload.serviceID;
+    const token = response.data.token
+      ? response.data.token.replace("Token : ", "")
+      : null;
+    const units = response.data.units || null;
+    const serialNumber = response.data.cards?.[0]?.Serial || null;
+    const pin = response.data.cards?.[0]?.Pin || null;
+    const jambPin = extractJambPin(
+      response.data.purchased_code || response.data.Pin,
+    );
 
     await History.create({
       _id: historyId,
       userId: user._id,
-      service: txInfo?.type || payload.serviceID,
+      service: resolvedService,
       amount: payload.amount,
       fee,
       costPrice,
@@ -272,23 +325,13 @@ export const payBill = async (
       profit,
       transactionReference,
       status: "SUCCESS",
-      // Never set before this fix — admin/controller/dashboard.ts's
-      // totalSales/salesInPeriod, getSalesBreakdown, and
-      // userManagement.ts's per-user totalSales all filter on
-      // `type: "DEBIT"`. With this field absent, none of those
-      // queries ever matched a real bill payment; they silently
-      // returned 0 / empty regardless of actual transaction volume.
       type: "DEBIT",
       transactionNumber: payload.number,
-      token: response.data.token
-        ? response.data.token.replace("Token : ", "")
-        : null,
-      units: response.data.units || null,
-      serialNumber: response.data.cards?.[0]?.Serial || null,
-      pin: response.data.cards?.[0]?.Pin || null,
-      jambPin: extractJambPin(
-        response.data.purchased_code || response.data.Pin,
-      ),
+      token,
+      units,
+      serialNumber,
+      pin,
+      jambPin,
       serviceID: payload.serviceID,
       variation_code: payload.variation_code,
       billersCode: payload.billersCode,
@@ -316,8 +359,33 @@ export const payBill = async (
     } catch (notificationError) {
       console.error("Error queueing push notification:", notificationError);
     }
+
+    const { category, label } = normalizeServiceLabel(resolvedService);
+
+    transaction = {
+      _id: historyId.toString(),
+      service: resolvedService,
+      category,
+      label,
+      amount: payload.amount,
+      fee,
+      transactionReference,
+      status: "success",
+      type: "debit",
+      date: new Date(),
+      transaction_id: (txInfo?.transactionId as string) ?? null,
+      unique_element: (txInfo?.unique_element as string) ?? null,
+      token,
+      units,
+      serialNumber,
+      pin,
+      jambPin,
+      serviceID: payload.serviceID,
+      variation_code: payload.variation_code,
+      billersCode: payload.billersCode,
+    };
   } else {
-    await refundAndRecordFailure({
+    transaction = await refundAndRecordFailure({
       user,
       payload,
       totalDeduction,
@@ -330,5 +398,5 @@ export const payBill = async (
     console.error("Not successful", response.data);
   }
 
-  return response.data;
+  return { raw: response.data, transaction };
 };
