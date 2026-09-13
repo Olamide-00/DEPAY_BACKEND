@@ -21,6 +21,15 @@ import type {
 
 dotenv.config();
 
+// Shaped exactly like getBillsHistories' mapping (service/category/label/
+// type/status/date, lowercase status) so the Receipt screen shown right
+// after payment renders identically to what the Transaction history screen
+// shows once it (re)fetches from the DB. Previously payBill only returned
+// the raw VTPass response, which has no top-level `status` field — the app
+// read `transaction.status`, got `undefined`, and defaulted to "pending"
+// even though the payment had already succeeded and been recorded as such.
+// That's why the receipt said "Pending" until the user left and came back
+// (at which point the Transaction screen re-fetched the real History row).
 export interface NormalizedTransaction {
   _id: string;
   service?: string;
@@ -128,6 +137,7 @@ async function refundAndRecordFailure({
   transactionReference,
   responseData,
 }: RefundAndRecordFailureParams): Promise<NormalizedTransaction> {
+  let refundSucceeded = true;
   try {
     await creditWallet({
       userId: user._id,
@@ -140,6 +150,7 @@ async function refundAndRecordFailure({
       relatedId: historyId,
     });
   } catch (refundError) {
+    refundSucceeded = false;
     console.error(
       `[payBill] CRITICAL: refund failed for ${payload.email}, debitReference=${debitReference}:`,
       refundError instanceof Error ? refundError.message : refundError,
@@ -154,8 +165,19 @@ async function refundAndRecordFailure({
     fee,
     transactionReference,
     status: "FAILED",
-
+    // Money WAS debited from the wallet for this attempt (then
+    // refunded via creditWallet above) — type reflects that the
+    // original movement was a debit, distinct from `status` which
+    // reflects the outcome. This is what admin/controller/
+    // transactions.ts's reversal tool checks (`tx.type !== "DEBIT"`)
+    // before allowing a manual wallet credit — without this, every
+    // reversal attempt on a failed transaction was being rejected.
     type: "DEBIT",
+    // Only true when the automatic refund above actually succeeded —
+    // if creditWallet threw, the money is genuinely still stuck and the
+    // admin dashboard's manual Reverse action should remain available
+    // as the recovery path for that specific case.
+    refunded: refundSucceeded,
     additionalData: responseData,
     transactionNumber: payload.number,
     serviceID: payload.serviceID,
@@ -286,9 +308,15 @@ export const payBill = async (
 
   const transactionReference =
     response.data.paymentReference || payload.request_id;
+  // VTPass's own docs say to treat `code: "000"` as the authoritative
+  // success signal — content.transactions.status is usually "delivered"
+  // for instant products (airtime, data) but can read differently (or be
+  // absent) for async products like electricity/cable, so checking code
+  // alone as a fallback avoids misclassifying those as failed.
+  const txStatus = response.data?.content?.transactions?.status;
   const delivered =
     response.status === 200 &&
-    response.data?.content?.transactions?.status === "delivered";
+    (txStatus === "delivered" || response.data?.code === "000");
 
   let transaction: NormalizedTransaction;
 
@@ -325,6 +353,12 @@ export const payBill = async (
       profit,
       transactionReference,
       status: "SUCCESS",
+      // Never set before this fix — admin/controller/dashboard.ts's
+      // totalSales/salesInPeriod, getSalesBreakdown, and
+      // userManagement.ts's per-user totalSales all filter on
+      // `type: "DEBIT"`. With this field absent, none of those
+      // queries ever matched a real bill payment; they silently
+      // returned 0 / empty regardless of actual transaction volume.
       type: "DEBIT",
       transactionNumber: payload.number,
       token,
@@ -362,6 +396,11 @@ export const payBill = async (
 
     const { category, label } = normalizeServiceLabel(resolvedService);
 
+    // This is the object the app's Receipt screen actually reads
+    // (via payBillController's response) immediately after payment —
+    // shaped identically to getBillsHistories so status/category/label/
+    // date never disagree between "right after paying" and "viewed from
+    // history a moment later".
     transaction = {
       _id: historyId.toString(),
       service: resolvedService,

@@ -24,6 +24,7 @@ export interface IHistory {
   profit: number;
   reversedAt: Date | null;
   reversedBy: mongoose.Types.ObjectId | null;
+  refunded: boolean;
   token: string | null;
   units: string | null;
   serialNumber?: string;
@@ -63,6 +64,7 @@ const historySchema = new Schema<IHistory>({
   profit: { type: Number, default: 0 },
   reversedAt: { type: Date, default: null },
   reversedBy: { type: Schema.Types.ObjectId, ref: "Admin", default: null },
+  refunded: { type: Boolean, default: false },
   token: { type: String, default: null },
   units: { type: String, default: null },
   serialNumber: { type: String },

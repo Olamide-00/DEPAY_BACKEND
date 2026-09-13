@@ -3,7 +3,11 @@ import mongoose from "mongoose";
 import History from "../../models/history.js";
 import User from "../../models/users.js";
 import Service from "../models/service.js";
-import { reverseDebit, creditWallet, findEntryByRelated } from "../../service/ledger/ledgerService.js";
+import {
+  reverseDebit,
+  creditWallet,
+  findEntryByRelated,
+} from "../../service/ledger/ledgerService.js";
 
 const RANGE_MS: Record<string, number> = {
   "24h": 24 * 60 * 60 * 1000,
@@ -22,7 +26,10 @@ const RANGE_MS: Record<string, number> = {
 // merged list you'll need to combine both endpoints client-side
 // (or ask me to add a merge layer — flagging rather than guessing).
 // ══════════════════════════════════════════════════════
-export const getTransactions = async (req: Request, res: Response): Promise<Response | void> => {
+export const getTransactions = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const {
       search = "",
@@ -101,6 +108,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<Resp
             units: 1,
             createdAt: 1,
             reversedAt: 1,
+            refunded: 1,
           },
         },
       ]),
@@ -128,7 +136,10 @@ export const getTransactions = async (req: Request, res: Response): Promise<Resp
 // ══════════════════════════════════════════════════════
 // GET /api/admin/transactions/:id
 // ══════════════════════════════════════════════════════
-export const getTransactionById = async (req: Request, res: Response): Promise<Response | void> => {
+export const getTransactionById = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { id } = req.params;
 
@@ -168,7 +179,10 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
 //   PENDING -> FAILED       (no wallet impact — see REVERSED below
 //                             for the explicit, separate refund step)
 //   FAILED  -> REVERSED     (credits the user's wallet the tx amount,
-//                             atomically, exactly once)
+//                             atomically, exactly once — and only if
+//                             it wasn't already auto-refunded by
+//                             payBill() when it failed; see the
+//                             tx.refunded check below)
 //
 // REVERSED is a one-way terminal state and only reachable from
 // FAILED — this is a deliberate two-step design (fail, then a
@@ -176,7 +190,10 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
 // so a wallet credit is never a side-effect of a plain status label
 // change.
 // ══════════════════════════════════════════════════════
-export const updateTransactionStatus = async (req: Request, res: Response): Promise<Response | void> => {
+export const updateTransactionStatus = async (
+  req: Request,
+  res: Response,
+): Promise<Response | void> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -214,6 +231,22 @@ export const updateTransactionStatus = async (req: Request, res: Response): Prom
         return res.status(409).json({
           success: false,
           message: "This transaction has already been reversed",
+        });
+      }
+      if (tx.refunded) {
+        // This is the actual exploit fix: payBill() already auto-refunds
+        // the wallet the instant a payment fails (see
+        // service/bills/services.ts). Without this check, clicking
+        // Reverse here credited the wallet a SECOND time for money that
+        // was already returned — and since every failed attempt is a
+        // brand-new transaction id, the reversedAt guard above never
+        // caught it, so an admin (or a user who could see this button)
+        // could mint free balance by repeatedly failing payments and
+        // reversing each one. Bail out before the ledger is touched.
+        return res.status(409).json({
+          success: false,
+          message:
+            "This transaction was already auto-refunded to the wallet when it failed — no reversal needed.",
         });
       }
       if (tx.type !== "DEBIT") {
@@ -259,7 +292,8 @@ export const updateTransactionStatus = async (req: Request, res: Response): Prom
         console.error("Reversal ledger error:", ledgerError);
         return res.status(404).json({
           success: false,
-          message: "Cannot reverse — the user on this transaction no longer exists",
+          message:
+            "Cannot reverse — the user on this transaction no longer exists",
         });
       }
 
@@ -273,7 +307,7 @@ export const updateTransactionStatus = async (req: Request, res: Response): Prom
           reversedAt: new Date(),
           reversedBy: req.admin!.id,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!updated) {
