@@ -75,6 +75,7 @@ process.on("uncaughtException", (error) => {
 
 const allowedOrigins = [
   "https://api.depay.com.ng",
+  "https://www.depay.com.ng",
   "https://depay.com.ng",
   "https://admin.depay.com.ng",
   "http://localhost:3000",
