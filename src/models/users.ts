@@ -1,4 +1,9 @@
-import mongoose, { Schema, type HydratedDocument, type Model, type Query } from "mongoose";
+import mongoose, {
+  Schema,
+  type HydratedDocument,
+  type Model,
+  type Query,
+} from "mongoose";
 
 // ══════════════════════════════════════════════════════════════════
 // NOTE on `tag`: this field is referenced throughout the codebase —
@@ -96,7 +101,10 @@ export interface IUserMethods {
   setPrimaryAccount(accountNumber: string): Promise<UserDocument>;
 }
 
-export type UserDocument = HydratedDocument<IUser, IUserMethods & IUserVirtuals>;
+export type UserDocument = HydratedDocument<
+  IUser,
+  IUserMethods & IUserVirtuals
+>;
 
 // The four custom query helpers below (byBalanceRange/active/recent/
 // withBankAccounts) aren't called anywhere in the codebase today —
@@ -111,7 +119,12 @@ interface IUserQueryHelpers {
   [key: string]: (...args: any[]) => any;
 }
 
-interface IUserModel extends Model<IUser, IUserQueryHelpers, IUserMethods, IUserVirtuals> {
+interface IUserModel extends Model<
+  IUser,
+  IUserQueryHelpers,
+  IUserMethods,
+  IUserVirtuals
+> {
   findByEmail(email: string): Promise<UserDocument | null>;
   findByTag(tag: string): Promise<UserDocument | null>;
   findActiveUsers(): Promise<UserDocument[]>;
@@ -119,10 +132,18 @@ interface IUserModel extends Model<IUser, IUserQueryHelpers, IUserMethods, IUser
   findByGender(gender: string): Promise<UserDocument[]>;
   findByAgeRange(minAge: number, maxAge: number): Promise<UserDocument[]>;
   findByAccountNumber(accountNumber: string): Promise<UserDocument | null>;
-  findByReservedAccountReference(reference: string): Promise<UserDocument | null>;
+  findByReservedAccountReference(
+    reference: string,
+  ): Promise<UserDocument | null>;
 }
 
-const userSchema = new Schema<IUser, IUserModel, IUserMethods, IUserQueryHelpers, IUserVirtuals>(
+const userSchema = new Schema<
+  IUser,
+  IUserModel,
+  IUserMethods,
+  IUserQueryHelpers,
+  IUserVirtuals
+>(
   {
     fullName: {
       type: String,
@@ -219,7 +240,6 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods, IUserQueryHelpers
       type: Date,
       select: true,
       index: true,
-      expires: 600,
     },
     balance: {
       type: Number,
@@ -474,7 +494,10 @@ userSchema.virtual("defaultAccount").get(function (this: UserDocument) {
 // INSTANCE METHODS
 // ==========================================
 
-userSchema.methods.hasSufficientBalance = function (this: UserDocument, amount: number) {
+userSchema.methods.hasSufficientBalance = function (
+  this: UserDocument,
+  amount: number,
+) {
   return this.balance >= amount;
 };
 
@@ -569,14 +592,13 @@ userSchema.statics.findByAgeRange = function (minAge: number, maxAge: number) {
 
 userSchema.statics.findByAccountNumber = function (accountNumber: string) {
   return this.findOne({
-    $or: [
-      { accountNumber },
-      { "accountDetails.accountNumber": accountNumber },
-    ],
+    $or: [{ accountNumber }, { "accountDetails.accountNumber": accountNumber }],
   });
 };
 
-userSchema.statics.findByReservedAccountReference = function (reference: string) {
+userSchema.statics.findByReservedAccountReference = function (
+  reference: string,
+) {
   return this.findOne({ reservedAccountReference: reference });
 };
 
@@ -584,7 +606,11 @@ userSchema.statics.findByReservedAccountReference = function (reference: string)
 // QUERY HELPERS (not currently used anywhere — see note above)
 // ==========================================
 
-userSchema.query.byBalanceRange = function (this: any, min: number, max: number) {
+userSchema.query.byBalanceRange = function (
+  this: any,
+  min: number,
+  max: number,
+) {
   return this.where("balance").gte(min).lte(max);
 };
 
