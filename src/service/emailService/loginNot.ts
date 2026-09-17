@@ -5,8 +5,8 @@ export const sendLoginNotification = async (
   ipAddress: string,
   device: string,
 ) => {
-  const subject = "New Login Alert - Your Account Activity";
-  const text = `A new login to your account was detected from IP: ${ipAddress} on ${device}. If this wasn't you, please secure your account immediately.`;
+  const subject = "New login to your Depay account";
+  const text = `A new login to your Depay account was detected from IP: ${ipAddress} on ${device}. If this wasn't you, please secure your account immediately.`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -34,7 +34,7 @@ export const sendLoginNotification = async (
         }
         img {
             border: 0;
-            max-width: 100% !important;
+            max-width: 100% !important;-
             display: block !important;
             height: auto !important;
             outline: none;
@@ -43,95 +43,99 @@ export const sendLoginNotification = async (
             -ms-interpolation-mode: bicubic;
         }
         a { text-decoration: none; }
-        .full-width-cta { display: inline-block; padding: 12px 20px; border-radius: 6px; text-decoration: none; }
+        .full-width-cta { display: inline-block; padding: 14px 20px; border-radius: 10px; text-decoration: none; }
         @media screen and (max-width: 600px) {
             .full-width-cta { display: block !important; width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
             .container { width: 100% !important; max-width: 100% !important; }
-            .responsive-table { width: 100% !important; }
             .mobile-padding { padding-left: 20px !important; padding-right: 20px !important; }
             .mobile-stack { display: block !important; width: 100% !important; text-align: center !important; }
-            .center-mobile { text-align: center !important; }
-            .logo-image { width: 40% !important; max-width: 150px !important; height: auto !important; }
-            .glass-card { margin: 0 10px !important; }
             .button { width: 100% !important; max-width: 300px !important; margin-left: auto !important; margin-right: auto !important; }
             .app-buttons td { display: block; width: 100%; padding: 5px 0 !important; }
         }
         @media (prefers-color-scheme: dark) {
-            body { background-color: #121212 !important; }
-            .dark-mode-bg-gradient { background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important; }
-            .dark-mode-bg-primary { background-color: rgba(40, 40, 40, 0.8) !important; }
-            .dark-mode-bg-secondary { background-color: rgba(30, 30, 30, 0.9) !important; }
-            .dark-mode-text-primary { color: #f0f0f0 !important; }
-            .dark-mode-text-secondary { color: #b0b0b0 !important; }
-            .dark-mode-button { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important; }
-            .dark-mode-border { border-color: rgba(80, 80, 80, 0.5) !important; }
-            .dark-mode-footer { background-color: rgba(20, 20, 20, 0.95) !important; }
-            .dark-mode-footer-text { color: #a0a0a0 !important; }
-            .dark-mode-code-bg { background-color: rgba(60, 60, 60, 0.6) !important; }
+            body { background-color: #0a1512 !important; }
+            .dark-mode-bg-page { background-color: #0a1512 !important; }
+            .dark-mode-bg-primary { background-color: #142b25 !important; }
+            .dark-mode-bg-secondary { background-color: #0d1f1b !important; }
+            .dark-mode-text-primary { color: #eafaf5 !important; }
+            .dark-mode-text-secondary { color: #a8c4bc !important; }
+            .dark-mode-border { border-color: rgba(234, 250, 245, 0.1) !important; }
+            .dark-mode-footer { background-color: #0d1f1b !important; }
+            .dark-mode-footer-text { color: #7d9b92 !important; }
+            .dark-mode-code-bg { background-color: rgba(54, 186, 157, 0.08) !important; }
         }
     </style>
 </head>
 
-<body style="margin: 0; padding: 0; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);" class="dark-mode-bg-gradient">
+<body style="margin: 0; padding: 0; background-color: #f5f7f6;" class="dark-mode-bg-page">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 600px; margin: 0 auto;" class="container">
         <tr>
             <td style="padding: 30px 20px;" class="mobile-padding">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="glass-card" style="border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); margin: 0 auto;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-radius: 20px; overflow: hidden; box-shadow: 0 8px 40px rgba(13, 31, 27, 0.12);">
 
-                    <!-- Logo -->
+                    <!-- Header / brand mark -->
                     <tr>
-                        <td style="background-color: rgba(255, 255, 255, 0.85); padding: 30px 0; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.05);" class="dark-mode-bg-secondary">
-                            <img src="https://res.cloudinary.com/dj6hhcp5h/image/upload/v1767252774/JAAN_jlylfj.webp" width="140" height="auto" alt="Jaan Logo" style="width: 140px; height: auto; display: block; margin: 0 auto;" class="logo-image" />
+                        <td style="background-color: #0d1f1b; padding: 36px 30px; text-align: center;" class="dark-mode-bg-secondary">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                <tr>
+                                    <td style="width: 40px; height: 40px; border-radius: 12px; background-color: #36ba9d; text-align: center; vertical-align: middle;">
+                                        <span style="font-family: 'Poppins', Arial, sans-serif; font-weight: 700; font-size: 20px; color: #0d1f1b; line-height: 40px;">D</span>
+                                    </td>
+                                    <td style="padding-left: 10px; vertical-align: middle;">
+                                        <span style="font-family: 'Poppins', Arial, sans-serif; font-weight: 600; font-size: 20px; color: #ffffff;">Depay</span>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
 
                     <!-- Main Content -->
                     <tr>
-                        <td style="background-color: rgba(255, 255, 255, 0.75); padding: 40px 30px;" class="mobile-padding dark-mode-bg-primary">
-                            <h1 style="margin: 0 0 20px 0; font-family: 'Inter', Arial, sans-serif; font-weight: 700; font-size: 28px; line-height: 32px; color: #333333; letter-spacing: -0.5px;" class="dark-mode-text-primary">
-                                Login Alert
+                        <td style="background-color: #ffffff; padding: 40px 32px;" class="mobile-padding dark-mode-bg-primary">
+                            <h1 style="margin: 0 0 14px 0; font-family: 'Poppins', Arial, sans-serif; font-weight: 600; font-size: 24px; line-height: 30px; color: #0d1f1b; letter-spacing: -0.3px;" class="dark-mode-text-primary">
+                                New login detected
                             </h1>
 
-                            <p style="margin: 0 0 25px 0; font-family: 'Inter', Arial, sans-serif; font-size: 16px; line-height: 24px; color: #555555;" class="dark-mode-text-secondary">
-                                We have detected a new login to your Jaan Account. Please review the details below:
+                            <p style="margin: 0 0 26px 0; font-family: 'Inter', Arial, sans-serif; font-size: 15px; line-height: 24px; color: #6b7280;" class="dark-mode-text-secondary">
+                                We noticed a new sign-in to your Depay account. Here's what we saw:
                             </p>
 
                             <!-- Login Details -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 25px; background-color: rgba(240, 240, 240, 0.7); border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.05);" class="dark-mode-code-bg dark-mode-border">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 26px; background-color: #f5f7f6; border-radius: 14px; border: 1px solid #e7ebe9;" class="dark-mode-code-bg dark-mode-border">
                                 <tr>
-                                    <td style="padding: 15px 20px; border-bottom: 1px solid rgba(0,0,0,0.06);">
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #555555;" class="dark-mode-text-secondary">&#128337; Date &amp; Time</span><br>
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #333333;" class="dark-mode-text-primary">${new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} (WAT)</span>
+                                    <td style="padding: 16px 20px; border-bottom: 1px solid #e7ebe9;" class="dark-mode-border">
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;" class="dark-mode-text-secondary">Date &amp; time</span><br>
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #0d1f1b; font-weight: 500;" class="dark-mode-text-primary">${new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} (WAT)</span>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 15px 20px; border-bottom: 1px solid rgba(0,0,0,0.06);">
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #555555;" class="dark-mode-text-secondary">&#127760; IP Address</span><br>
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #333333;" class="dark-mode-text-primary">${ipAddress}</span>
+                                    <td style="padding: 16px 20px; border-bottom: 1px solid #e7ebe9;" class="dark-mode-border">
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;" class="dark-mode-text-secondary">IP address</span><br>
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #0d1f1b; font-weight: 500;" class="dark-mode-text-primary">${ipAddress}</span>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 15px 20px;">
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #555555;" class="dark-mode-text-secondary">&#128241; Device</span><br>
-                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #333333;" class="dark-mode-text-primary">${device}</span>
+                                    <td style="padding: 16px 20px;">
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;" class="dark-mode-text-secondary">Device</span><br>
+                                        <span style="font-family: 'Inter', Arial, sans-serif; font-size: 15px; color: #0d1f1b; font-weight: 500;" class="dark-mode-text-primary">${device}</span>
                                     </td>
                                 </tr>
                             </table>
 
+                            <p style="margin: 0 0 26px 0; font-family: 'Inter', Arial, sans-serif; font-size: 15px; line-height: 24px; color: #6b7280;" class="dark-mode-text-secondary">
+                                If this was you, there's nothing else to do. If you don't recognise this activity, please contact support immediately and change your transaction PIN from the app.
+                            </p>
+
                             <!-- CTA Button -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto 25px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
                                 <tr>
-                                    <td style="background: linear-gradient(135deg, #6b34ff 0%, #8b5cf6 100%); border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(107, 52, 255, 0.2);" class="dark-mode-button">
-                                        <a href="https://jaan.ng/" target="_blank" style="display: inline-block; padding: 16px 36px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 20px; color: #ffffff; text-decoration: none; border-radius: 8px;" class="button full-width-cta">
-                                            Change Your Password
+                                    <td style="background-color: #36ba9d; border-radius: 10px; text-align: center; box-shadow: 0 6px 18px rgba(54, 186, 157, 0.3);">
+                                        <a href="https://depay.com.ng" target="_blank" style="display: inline-block; padding: 14px 36px; font-family: 'Inter', Arial, sans-serif; font-size: 15px; font-weight: 600; line-height: 20px; color: #ffffff;" class="button full-width-cta">
+                                            Not you? Secure your account
                                         </a>
                                     </td>
                                 </tr>
                             </table>
-
-                            <p style="margin: 0; font-family: 'Inter', Arial, sans-serif; font-size: 16px; line-height: 24px; color: #555555;" class="dark-mode-text-secondary">
-                                If you did not initiate this login, please click the button above to secure your account immediately.
-                            </p>
                         </td>
                     </tr>
                 </table>
@@ -141,50 +145,24 @@ export const sendLoginNotification = async (
         <!-- Support Section -->
         <tr>
             <td style="padding: 0 20px 20px;" class="mobile-padding">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border: 1px solid #e7ebe9; border-radius: 16px;">
                     <tr>
-                        <td style="padding: 35px 30px; color: #333333; font-size: 16px; line-height: 1.6;" class="mobile-padding">
-                            <p style="margin: 0;">If you have any questions or need assistance, our customer support team is always available to help. You can reach us via email at <a href="mailto:contact@jaan.ng" style="color: #8F61FF; text-decoration: none; font-weight: 600;">contact@jaan.ng</a>, WhatsApp or any of our social media pages.</p>
+                        <td style="padding: 26px 28px; color: #6b7280; font-size: 14px; line-height: 1.6;" class="mobile-padding">
+                            <!-- TODO: confirm the real support inbox before sending -->
+                            Need help? Reach our support team at <a href="mailto:support@depay.com.ng" style="color: #2a9a82; text-decoration: none; font-weight: 600;">support@depay.com.ng</a>.
                         </td>
                     </tr>
                 </table>
             </td>
         </tr>
 
-        <!-- App Download -->
+        <!-- Services banner -->
         <tr>
             <td style="padding: 0 20px 20px;" class="mobile-padding">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);">
-                    <tr>
-                        <td style="padding: 30px; text-align: center;" class="mobile-padding">
-                            <p style="margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #333333;">Download our mobile app</p>
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="app-buttons">
-                                <tr>
-                                    <td class="mobile-stack" style="padding: 0 8px;">
-                                        <a href="http://jaan.ng/download" target="_blank" style="display: inline-block; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
-                                            <img src="https://cloudfilesdm.com/postcards/button-app-store-dark.png" width="150" alt="App Store" style="display: block; max-width: 150px; height: auto;">
-                                        </a>
-                                    </td>
-                                    <td class="mobile-stack" style="padding: 0 8px;">
-                                        <a href="http://jaan.ng/download" target="_blank" style="display: inline-block; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
-                                            <img src="https://cloudfilesdm.com/postcards/button-google-play-dark.png" width="150" alt="Google Play" style="display: block; max-width: 150px; height: auto;">
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-
-        <!-- Services Banner -->
-        <tr>
-            <td style="padding: 0 20px 20px;" class="mobile-padding">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border: 1px solid #e7ebe9; border-radius: 16px;">
                     <tr>
                         <td style="padding: 20px; text-align: center;">
-                            <p style="margin: 0; font-size: 14px; color: #8F61FF; font-weight: 600; letter-spacing: 0.5px;">eSim | Internet | Gift Cards | TV | Electricity | Airtime | Ticketing</p>
+                            <p style="margin: 0; font-size: 13px; color: #2a9a82; font-weight: 600; letter-spacing: 0.4px;">Airtime &nbsp;|&nbsp; Data &nbsp;|&nbsp; TV &nbsp;|&nbsp; Electricity &nbsp;|&nbsp; Education</p>
                         </td>
                     </tr>
                 </table>
@@ -194,48 +172,14 @@ export const sendLoginNotification = async (
         <!-- Footer -->
         <tr>
             <td style="padding: 0 20px 30px;" class="mobile-padding">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(220, 220, 220, 0.6); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border: 1px solid #e7ebe9; border-radius: 16px;" class="dark-mode-footer">
                     <tr>
-                        <td style="padding: 30px; text-align: center;" class="mobile-padding">
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom: 20px;">
-                                <tr>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://www.linkedin.com/company/jaan-ng/" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=xuvGCOXi8Wyg&format=png&color=000000" width="20" height="20" alt="LinkedIn" style="display: block;">
-                                        </a>
-                                    </td>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://www.tiktok.com/@jaan.ng" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=118640&format=png&color=000000" width="20" height="20" alt="TikTok" style="display: block;">
-                                        </a>
-                                    </td>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://facebook.com/jaanservicesfb" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=uLWV5A9vXIPu&format=png&color=000000" width="20" height="20" alt="Facebook" style="display: block;">
-                                        </a>
-                                    </td>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://x.com/Jaanservices" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=phOKFKYpe00C&format=png&color=000000" width="20" height="20" alt="Twitter" style="display: block;">
-                                        </a>
-                                    </td>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://www.instagram.com/jaan.services" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=Xy10Jcu1L2Su&format=png&color=000000" width="20" height="20" alt="Instagram" style="display: block;">
-                                        </a>
-                                    </td>
-                                    <td style="padding: 0 8px;">
-                                        <a href="https://whatsapp.com/channel/0029Vb5kojLKLaHmC3fquf1A" target="_blank" style="display: inline-block; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 50%;">
-                                            <img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" width="20" height="20" alt="WhatsApp" style="display: block;">
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
-                            <p style="margin: 0; color: rgba(0, 0, 0, 0.7); font-size: 12px; line-height: 1.5;">
-                                &copy; ${new Date().getFullYear()} Jaan Digital Services LTD | RC8015243
+                        <td style="padding: 26px; text-align: center;" class="mobile-padding">
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.5;" class="dark-mode-footer-text">
+                                &copy; ${new Date().getFullYear()} Depay
                             </p>
-                            <p style="margin: 10px 0 0; color: rgba(0, 0, 0, 0.7); font-size: 12px;">
-                                <a href="https://www.jaan.ng" target="_blank" style="color: rgba(0, 0, 0, 0.7); text-decoration: underline;">www.jaan.ng</a>
+                            <p style="margin: 8px 0 0; color: #9ca3af; font-size: 12px;" class="dark-mode-footer-text">
+                                <a href="https://depay.com.ng" target="_blank" style="color: #9ca3af; text-decoration: underline;">depay.com.ng</a>
                             </p>
                         </td>
                     </tr>

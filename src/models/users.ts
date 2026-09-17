@@ -5,31 +5,6 @@ import mongoose, {
   type Query,
 } from "mongoose";
 
-// ══════════════════════════════════════════════════════════════════
-// NOTE on `tag`: this field is referenced throughout the codebase —
-// findByTag below, the referral-bonus lookup in
-// webhook/version2/funds.ts (`User.findOne({ tag: user.referredBy })`),
-// the JWT payload built at login (`{ id, email, tag }`), and several
-// indexes further down — but it was never actually defined on this
-// schema before this TypeScript conversion. Since Mongoose drops
-// unknown paths on save by default (strict mode, which this schema
-// uses), `tag` was always `undefined` for every user: nothing ever
-// persisted it, `utils/generateTag.ts`'s `generateUserTag()` exists
-// but is never called anywhere, and no registration path assigns it.
-// In practice this means the referral-bonus system has been
-// silently non-functional — the lookup that's supposed to find a
-// referrer by their tag can never match anything.
-//
-// Added the field here (typed, indexed, matching what every other
-// file already assumed existed) so the codebase is now internally
-// consistent — but that alone doesn't make referrals start working.
-// Someone still needs to call `generateUserTag()` at registration and
-// assign the result. Left that out of this pass since it's a
-// behavior change beyond "convert to TypeScript" and worth a
-// deliberate decision (e.g. should existing users get backfilled a
-// tag?) rather than a silent side effect of a type conversion.
-// ══════════════════════════════════════════════════════════════════
-
 export interface IAccountDetail {
   bankCode?: string;
   bankName?: string;
@@ -105,16 +80,6 @@ export type UserDocument = HydratedDocument<
   IUser,
   IUserMethods & IUserVirtuals
 >;
-
-// The four custom query helpers below (byBalanceRange/active/recent/
-// withBankAccounts) aren't called anywhere in the codebase today —
-// confirmed by grep before writing this file. Mongoose's TS typing
-// for query helpers requires threading a query-helpers generic
-// through every model usage site across the whole codebase for a
-// feature nothing currently uses, so `IUserQueryHelpers` here is
-// intentionally loose (index signature, not per-method signatures)
-// rather than fully wired into IUserModel's generics. If you start
-// using them, worth tightening then.
 interface IUserQueryHelpers {
   [key: string]: (...args: any[]) => any;
 }
