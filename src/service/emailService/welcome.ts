@@ -6,7 +6,10 @@ const INK = "#141613";
 const MUTED = "#6B7268";
 const BORDER = "#E5E8E3";
 
-export const sendWelcomeEmail = async (recipientEmail: string, userName: string) => {
+export const sendWelcomeEmail = async (
+  recipientEmail: string,
+  userName: string,
+) => {
   const subject =
     "🎉 Welcome to Depay - Your one-stop solution for bill payments";
   const text = `Hi ${userName}, welcome to Depay! Your one-stop solution for all bill payments. Use coupon code WELCOME10 to get ₦200 free credit for your first transaction.`;
