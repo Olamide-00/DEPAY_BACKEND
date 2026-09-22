@@ -4,9 +4,35 @@ import ServiceFeeConfig, {
 
 export interface FeeCalculationResult {
   fee: number;
-  category: FeeCategory | null; // informational — which category matched, for logging/debugging
-  feeConfigApplied: boolean; // false when no config row exists / disabled — informational only
+  category: FeeCategory | null;
+  feeConfigApplied: boolean;
 }
+
+export interface FeeQuote extends FeeCalculationResult {
+  amount: number;
+  total: number;
+}
+
+export class FeeMismatchError extends Error {
+  quote: FeeQuote;
+
+  constructor(quote: FeeQuote) {
+    super("The service charge has changed. Please review the new total.");
+    this.name = "FeeMismatchError";
+    this.quote = quote;
+  }
+}
+
+const EXACT_SERVICE_IDS: Record<string, FeeCategory> = {
+  mtn: "airtime",
+  airtel: "airtime",
+  glo: "airtime",
+  etisalat: "airtime",
+  "9mobile": "airtime",
+  showmax: "tv",
+  "smile-direct": "data",
+  spectranet: "data",
+};
 
 const CATEGORY_PATTERNS: { category: FeeCategory; pattern: RegExp }[] = [
   { category: "airtime", pattern: /airtime/i },
@@ -20,20 +46,24 @@ const CATEGORY_PATTERNS: { category: FeeCategory; pattern: RegExp }[] = [
   { category: "education", pattern: /waec|neco|jamb|education/i },
 ];
 
-function classify(serviceID: string): FeeCategory | null {
-  const match = CATEGORY_PATTERNS.find((c) => c.pattern.test(serviceID));
-  return match?.category ?? null;
+export function classifyServiceID(serviceID: string): FeeCategory | null {
+  const id = serviceID.toLowerCase().trim();
+  const exact = EXACT_SERVICE_IDS[id];
+  if (exact) return exact;
+  return CATEGORY_PATTERNS.find((c) => c.pattern.test(id))?.category ?? null;
 }
+
+const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 export async function calculateFee(
   serviceID: string | undefined,
   faceValue: number,
 ): Promise<FeeCalculationResult> {
-  if (!serviceID || !faceValue || faceValue <= 0) {
+  if (!serviceID || !Number.isFinite(faceValue) || faceValue <= 0) {
     return { fee: 0, category: null, feeConfigApplied: false };
   }
 
-  const category = classify(serviceID.toLowerCase().trim());
+  const category = classifyServiceID(serviceID);
   if (!category) {
     return { fee: 0, category: null, feeConfigApplied: false };
   }
@@ -55,5 +85,17 @@ export async function calculateFee(
   if (config.minFee != null) fee = Math.max(fee, config.minFee);
   if (config.maxFee != null) fee = Math.min(fee, config.maxFee);
 
-  return { fee: Math.round(fee * 100) / 100, category, feeConfigApplied: true };
+  return { fee: round2(fee), category, feeConfigApplied: true };
+}
+
+export async function getFeeQuote(
+  serviceID: string | undefined,
+  amount: number,
+): Promise<FeeQuote> {
+  const result = await calculateFee(serviceID, amount);
+  return {
+    ...result,
+    amount: round2(amount),
+    total: round2(amount + result.fee),
+  };
 }

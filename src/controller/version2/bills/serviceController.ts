@@ -8,6 +8,7 @@ import {
 } from "../../../service/bills/services.js";
 import type { PayBillPayload } from "../../../types/vtpass.js";
 import { normalizeServiceLabel } from "../../../utils/serviceLabel.js";
+import { FeeMismatchError } from "../../../service/bills/feeService.js";
 
 // Constants
 const CACHE_TTL = {
@@ -388,6 +389,15 @@ export const payBillController = async (
       transaction,
     });
   } catch (error) {
+    if (error instanceof FeeMismatchError) {
+      return res.status(409).json({
+        success: false,
+        code: "FEE_CHANGED",
+        message: error.message,
+        quote: error.quote,
+      });
+    }
+
     const message = error instanceof Error ? error.message : String(error);
     console.error("Error in payBillController:", message);
 
@@ -501,6 +511,7 @@ export const getBillsHistories = async (
             category,
             label,
             amount: history.amount,
+            fee: history.fee ?? 0,
             transactionReference: history.transactionReference,
             status: (history.status || "PENDING").toLowerCase(),
             receipentName: history.receipentName,

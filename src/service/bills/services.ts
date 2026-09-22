@@ -12,7 +12,7 @@ import {
   creditWallet,
   InsufficientBalanceError,
 } from "../ledger/ledgerService.js";
-import { calculateFee } from "./feeService.js";
+import { FeeMismatchError, getFeeQuote } from "./feeService.js";
 import { normalizeServiceLabel } from "../../utils/serviceLabel.js";
 import type {
   PayBillPayload,
@@ -193,12 +193,28 @@ export const payBill = async (
   if (!payload.email) {
     throw new Error("email is required");
   }
-  if (!payload.amount || payload.amount <= 0) {
+
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Invalid amount");
   }
+  payload.amount = amount;
 
-  const { fee } = await calculateFee(payload.serviceID, payload.amount);
-  const totalDeduction = Math.round((payload.amount + fee) * 100) / 100;
+  const expectedTotal = payload.expectedTotal;
+  delete payload.expectedTotal;
+  delete payload.expectedFee;
+
+  const quote = await getFeeQuote(payload.serviceID, amount);
+  const { fee } = quote;
+  const totalDeduction = quote.total;
+
+  if (
+    expectedTotal !== undefined &&
+    expectedTotal !== null &&
+    Math.abs(Number(expectedTotal) - totalDeduction) > 0.009
+  ) {
+    throw new FeeMismatchError(quote);
+  }
 
   if (totalDeduction <= 0) {
     throw new Error("Invalid amount");
