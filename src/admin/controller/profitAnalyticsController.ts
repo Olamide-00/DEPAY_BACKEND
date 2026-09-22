@@ -77,7 +77,6 @@ export const getProfitSummary = async (
   }
 };
 
-// GET /api/v1/admin/analytics/profit/timeseries?from=&to=&interval=day
 // Daily (or monthly) profit trend — what the dashboard chart plots.
 export const getProfitTimeseries = async (
   req: Request,
